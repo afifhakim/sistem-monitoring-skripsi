@@ -45,9 +45,9 @@ export default function LoginPage() {
   };
 
   const setDemoDosen = () => {
-    setEmail("dosen@kampus.ac.id");
+    setEmail("afif@kampus.ac.id");
     setPassword("dosen123");
-    handleLogin(undefined, "dosen@kampus.ac.id", "dosen123");
+    handleLogin(undefined, "afif@kampus.ac.id", "dosen123");
   };
 
   const setDemoMhs = () => {
@@ -63,9 +63,12 @@ export default function LoginPage() {
           <GraduationCap className="w-9 h-9 text-white" />
         </div>
         <h2 className="text-3xl font-extrabold tracking-tight text-white">
-          Sistem Monitoring Skripsi
+          Sistem Pemantauan Skripsi
         </h2>
-        <p className="mt-2 text-sm text-slate-300">
+        <p className="mt-2 text-sm text-indigo-300 font-medium">
+          Dosen Pembimbing: Afif Taufiiqul Hakim
+        </p>
+        <p className="text-xs text-slate-400 mt-0.5">
           Pelaporan Progres Bimbingan, Arsip Berkas & Repositori Simulasi
         </p>
       </div>
@@ -81,15 +84,15 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={setDemoDosen}
-                className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-medium text-white transition shadow"
+                className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-medium text-white transition shadow text-center"
               >
                 <BookOpen className="w-3.5 h-3.5" />
-                Login Dosen
+                Login Dosen (Afif Taufiiqul Hakim)
               </button>
               <button
                 type="button"
                 onClick={setDemoMhs}
-                className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-medium text-white transition shadow"
+                className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-medium text-white transition shadow text-center"
               >
                 <UserCheck className="w-3.5 h-3.5" />
                 Login Mahasiswa

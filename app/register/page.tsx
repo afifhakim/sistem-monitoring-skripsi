@@ -60,8 +60,11 @@ export default function RegisterPage() {
         <h2 className="text-2xl font-bold tracking-tight text-white">
           Pendaftaran Mahasiswa Bimbingan Skripsi
         </h2>
-        <p className="mt-1 text-xs text-slate-300">
-          Lengkapi data diri dan rencana penelitian skripsi Anda
+        <p className="mt-1 text-xs text-indigo-300 font-medium">
+          Dosen Pembimbing: Afif Taufiiqul Hakim
+        </p>
+        <p className="text-[11px] text-slate-300">
+          Lengkapi data diri dan rencana topik penelitian skripsi Anda
         </p>
       </div>
 

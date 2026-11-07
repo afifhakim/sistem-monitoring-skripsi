@@ -219,7 +219,8 @@ export default function MahasiswaDashboard() {
                   {getStatusBadge(userData.status)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
-                  Tahun Angkatan: <strong className="text-slate-800">{userData.academicYear}</strong> • Topik:{" "}
+                  Dosen Pembimbing: <strong className="text-indigo-700 font-bold">Afif Taufiiqul Hakim</strong> • Tahun Angkatan:{" "}
+                  <strong className="text-slate-800">{userData.academicYear}</strong> • Topik:{" "}
                   <strong className="text-slate-800">{userData.topic}</strong>
                 </p>
               </div>
@@ -341,7 +342,7 @@ export default function MahasiswaDashboard() {
                       {log.dosenNotes && (
                         <div className="mt-3 p-3 rounded-lg bg-indigo-50 border border-indigo-200">
                           <strong className="text-indigo-900 block flex items-center gap-1">
-                            <MessageSquare className="w-3.5 h-3.5" /> Catatan dari Dosen Pembimbing:
+                            <MessageSquare className="w-3.5 h-3.5" /> Catatan dari Dosen Pembimbing (Afif Taufiiqul Hakim):
                           </strong>
                           <p className="text-indigo-950 mt-1 whitespace-pre-wrap font-medium">{log.dosenNotes}</p>
                         </div>

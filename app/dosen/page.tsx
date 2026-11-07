@@ -219,8 +219,8 @@ export default function DosenDashboard() {
               <GraduationCap className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-sm sm:text-base leading-tight">Dashboard Dosen Pembimbing</h1>
-              <p className="text-[11px] text-slate-400">Monitoring Mahasiswa Skripsi & Repositori Berkas</p>
+              <h1 className="font-bold text-sm sm:text-base leading-tight">Dashboard Dosen Pembimbing: Afif Taufiiqul Hakim</h1>
+              <p className="text-[11px] text-slate-400">Pemantauan Progres Mahasiswa Skripsi & Repositori Berkas</p>
             </div>
           </div>
 
@@ -308,7 +308,7 @@ export default function DosenDashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div>
               <h2 className="text-base font-bold text-slate-800">Distribusi Mahasiswa Pendaftar per Tahun</h2>
-              <p className="text-xs text-slate-500">Melihat perbandingan jumlah mahasiswa bimbingan yang mendaftar di Anda setiap tahun akademik</p>
+              <p className="text-xs text-slate-500">Melihat perbandingan jumlah mahasiswa bimbingan yang mendaftar pada Afif Taufiiqul Hakim setiap tahun akademik</p>
             </div>
             {stats?.mainDriveFolderUrl && (
               <a

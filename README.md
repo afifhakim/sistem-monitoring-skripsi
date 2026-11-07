@@ -1,13 +1,13 @@
-# Sistem Monitoring Skripsi & Repositori Berkas Penelitian
+# Sistem Pemantauan Skripsi • Dosen Pembimbing Afif Taufiiqul Hakim
 
-Sistem manajemen pelaporan progres mahasiswa bimbingan skripsi berbasis web modern dengan dashboard monitoring per tahun akademik, logbook progres berkala, dan repositori berkas (PDF dokumen naskah, slide presentasi, serta raw file simulasi/komputasi) terintegrasi Google Drive.
+Sistem manajemen pelaporan progres mahasiswa bimbingan skripsi berbasis web modern untuk Dosen Pembimbing **Afif Taufiiqul Hakim** dengan dashboard monitoring pendaftar per tahun akademik, logbook progres berkala, dan repositori berkas (PDF dokumen naskah, slide presentasi, serta raw file simulasi/komputasi) terintegrasi Google Drive.
 
 ---
 
 ## 🌟 Fitur Utama
 
 1. **Dashboard Dosen Pembimbing (Monitoring per Tahun):**
-   - **Statistik Pendaftar Tahunan:** Menampilkan jumlah mahasiswa bimbingan yang mendaftar di Anda setiap tahun akademik (misal: 2023/2024, 2024/2025, 2025/2026, dst.).
+   - **Statistik Pendaftar Tahunan:** Menampilkan jumlah mahasiswa bimbingan yang mendaftar pada Afif Taufiiqul Hakim setiap tahun akademik (misal: 2023/2024, 2024/2025, 2025/2026, 2026/2027, dst.).
    - **Grafik Distribusi & Filter:** Filter mahasiswa berdasarkan tahun angkatan dan status tahapan skripsi (Proposal, Penelitian, Seminar Hasil, Sidang, Lulus).
    - **Review Logbook Bimbingan:** Meninjau laporan progres mingguan mahasiswa, memberikan catatan/koreksi pembimbing, serta menandai status (*Disetujui* / *Perlu Revisi*).
    - **Akses Cepat Google Drive:** Tautan langsung ke folder Google Drive utama dosen dan folder khusus tiap mahasiswa.
@@ -37,7 +37,7 @@ Sistem sudah dilengkapi data awal (*seeded data*) untuk langsung diuji coba:
 
 | Role | Email | Password | Keterangan |
 | :--- | :--- | :--- | :--- |
-| **Dosen Pembimbing** | `dosen@kampus.ac.id` | `dosen123` | Akses penuh dashboard analitik & review |
+| **Dosen Pembimbing** | `afif@kampus.ac.id` *(atau `dosen@kampus.ac.id`)* | `dosen123` | Afif Taufiiqul Hakim (Akses dashboard analitik & review) |
 | **Mahasiswa 1 (2025/2026)** | `mhs@kampus.ac.id` | `mhs123` | Ahmad Fauzi (NIM: 220401005) - Simulasi FEM |
 | **Mahasiswa 2 (2024/2025)** | `fajar@kampus.ac.id` | `mhs123` | Fajar Pratama (NIM: 210401021) - Termal Baterai |
 | **Mahasiswa 3 (2023/2024)** | `budi@kampus.ac.id` | `mhs123` | Budi Santoso (NIM: 200401010) - Lulus |

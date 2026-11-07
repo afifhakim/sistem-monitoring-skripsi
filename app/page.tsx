@@ -24,7 +24,7 @@ export default async function HomePage() {
             </div>
             <div>
               <span className="font-bold text-base tracking-tight text-white block">SkripsiTrack</span>
-              <span className="text-[10px] text-slate-400 block -mt-1">Monitoring & Arsip Bimbingan</span>
+              <span className="text-[10px] text-slate-400 block -mt-1">Dosen Pembimbing: Afif Taufiiqul Hakim</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -42,15 +42,15 @@ export default async function HomePage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 my-auto">
         <div className="text-center max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-400/20 text-indigo-300 text-xs font-medium mb-6">
-            <BarChart3 className="w-3.5 h-3.5" /> Manajemen Mahasiswa Skripsi & Repositori Berkas Terorganisir
+            <BarChart3 className="w-3.5 h-3.5" /> Sistem Pemantauan Skripsi • Dosen Pembimbing Afif Taufiiqul Hakim
           </div>
           <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-tight">
-            Pantau Progres Skripsi & Kelola Berkas Simulasi dengan Rapi
+            Pemantauan Progres Skripsi & Repositori Simulasi
           </h1>
           <p className="mt-6 text-base sm:text-lg text-slate-300 leading-relaxed">
-            Sistem terpadu untuk Dosen Pembimbing memantau jumlah mahasiswa bimbingan setiap tahun,
-            meninjau logbook mingguan, serta menyimpan dokumen PDF, materi presentasi, dan file komputasi mentah
-            langsung ke Google Drive Anda.
+            Sistem terpadu untuk Dosen Pembimbing <strong>Afif Taufiiqul Hakim</strong> dalam memantau pendaftaran
+            mahasiswa bimbingan setiap tahun, meninjau logbook mingguan, serta mengorganisasi naskah PDF, slide presentasi,
+            dan berkas mentah simulasi/perhitungan langsung ke Google Drive.
           </p>
 
           <div className="mt-10 flex flex-wrap justify-center gap-4">

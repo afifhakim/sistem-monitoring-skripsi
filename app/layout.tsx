@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Sistem Monitoring Skripsi & Repositori Simulasi",
-  description: "Sistem pelaporan progres bimbingan skripsi, monitoring per tahun, dan repositori berkas PDF, presentasi, serta simulasi terintegrasi Google Drive",
+  title: "Sistem Pemantauan Skripsi - Dosen Pembimbing Afif Taufiiqul Hakim",
+  description: "Sistem pelaporan progres bimbingan skripsi, monitoring per tahun, dan repositori berkas PDF, presentasi, serta simulasi terintegrasi Google Drive untuk Dosen Pembimbing Afif Taufiiqul Hakim",
 };
 
 export default function RootLayout({

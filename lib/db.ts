@@ -89,8 +89,8 @@ function getInitialData(): DatabaseSchema {
   const users: User[] = [
     {
       id: "usr-dosen-1",
-      name: "Dr. Ir. Pembimbing Utama, M.T.",
-      email: "dosen@kampus.ac.id",
+      name: "Afif Taufiiqul Hakim",
+      email: "afif@kampus.ac.id",
       passwordHash: defaultPasswordDosen,
       role: "DOSEN",
       createdAt: new Date("2023-01-01").toISOString(),
@@ -299,8 +299,8 @@ function getInitialData(): DatabaseSchema {
 
   const settings: DosenSettings = {
     dosenId: "usr-dosen-1",
-    mainDriveFolderUrl: "https://drive.google.com/drive/folders/Skripsi-Bimbingan-Mahasiswa-Utama",
-    mainDriveFolderId: "Skripsi-Bimbingan-Mahasiswa-Utama",
+    mainDriveFolderUrl: "https://drive.google.com/drive/folders/Skripsi-Bimbingan-Afif-Taufiiqul-Hakim",
+    mainDriveFolderId: "Skripsi-Bimbingan-Afif-Taufiiqul-Hakim",
   };
 
   return { users, progressLogs, files, settings };
