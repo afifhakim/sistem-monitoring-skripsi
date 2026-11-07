@@ -37,6 +37,7 @@ export async function POST(request: Request) {
     const newLog: ProgressLog = {
       id: `log-${Date.now()}`,
       studentId: user.id,
+      dosenId: user.dosenId || "usr-afif-hakim",
       studentName: user.name,
       nim: user.nim || "-",
       academicYear: user.academicYear || "Belum Ditentukan",

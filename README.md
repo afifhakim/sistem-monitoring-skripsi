@@ -1,158 +1,79 @@
 # Sistem Pemantauan Skripsi • Dosen Pembimbing Afif Taufiiqul Hakim
 
-Sistem manajemen pelaporan progres mahasiswa bimbingan skripsi berbasis web modern untuk Dosen Pembimbing **Afif Taufiiqul Hakim** dengan dashboard monitoring pendaftar per tahun akademik, logbook progres berkala, dan repositori berkas (PDF dokumen naskah, slide presentasi, serta raw file simulasi/komputasi) terintegrasi Google Drive.
+Sistem manajemen pelaporan progres mahasiswa bimbingan skripsi berbasis web modern dengan dukungan multi-dosen (dosen lain dapat mendaftar mandiri), otorisasi Google Drive pribadi per dosen (OAuth 2.0), monitoring pendaftar per tahun akademik, logbook berkala, serta repositori berkas PDF, slide presentasi, dan file raw simulasi.
 
 ---
 
 ## 🌟 Fitur Utama
 
-1. **Dashboard Dosen Pembimbing (Monitoring per Tahun):**
-   - **Statistik Pendaftar Tahunan:** Menampilkan jumlah mahasiswa bimbingan yang mendaftar pada Afif Taufiiqul Hakim setiap tahun akademik (misal: 2023/2024, 2024/2025, 2025/2026, 2026/2027, dst.).
-   - **Grafik Distribusi & Filter:** Filter mahasiswa berdasarkan tahun angkatan dan status tahapan skripsi (Proposal, Penelitian, Seminar Hasil, Sidang, Lulus).
-   - **Review Logbook Bimbingan:** Meninjau laporan progres mingguan mahasiswa, memberikan catatan/koreksi pembimbing, serta menandai status (*Disetujui* / *Perlu Revisi*).
-   - **Akses Cepat Google Drive:** Tautan langsung ke folder Google Drive utama dosen dan folder khusus tiap mahasiswa.
+1. **Akun Bersih & Multi-Dosen:**
+   * **Akun Utama Pak Afif Taufiiqul Hakim:** Akun baru bersih (0 data dummy) siap untuk mahasiswa bimbingan riil Anda.
+   * **Pendaftaran Dosen Lain:** Dosen pembimbing lain dapat mendaftar akun sendiri melalui halaman pendaftaran (`/register`). Setiap dosen memiliki dashboard terpisah dan hanya melihat mahasiswa bimbingannya masing-masing.
 
-2. **Portal Mahasiswa Bimbingan:**
-   - **Logbook Progres Mingguan:** Pengisian capaian mingguan, rincian pekerjaan, kendala teknis/komputasi, dan target selanjutnya.
-   - **Riwayat Feedback:** Membaca catatan dan arahan perbaikan langsung dari dosen pembimbing.
-   - **Pusat Unggah Berkas Penelitian (3 Kategori Khusus):**
-     1. **Dokumen Naskah / Proposal (.pdf):** Draft skripsi, laporan kemajuan, artikel jurnal.
-     2. **Slide Materi Presentasi (.pptx / .pdf):** Slide seminar proposal, seminar hasil, dan sidang akhir.
-     3. **File Raw Simulasi / Data Perhitungan (.zip, scripts, dataset):** File mentah simulasi (ANSYS, MATLAB, Jupyter Notebook `.ipynb`, Excel validasi perhitungan, CAD, kode Python).
+2. **Otorisasi Google Drive Pribadi per Dosen (OAuth 2.0 & Manual):**
+   * Setiap dosen dapat menghubungkan akun Google Drive pribadi mereka dengan tombol **"Otorisasi Akun Google Drive Saya"**.
+   * Berkas yang diunggah mahasiswa bimbingan akan otomatis terkirim ke Google Drive dosen pembimbing yang bersangkutan.
+   * Mendukung input tautan Google Drive manual sebagai alternatif cepat.
 
-3. **Penyimpanan Berkas Terintegrasi Google Drive:**
-   - Mendukung input **Tautan Berbagi Google Drive** (sangat ideal untuk file simulasi / dataset berukuran besar ratusan MB hingga gigabyte).
-   - Mendukung **Upload Otomatis via Google Drive API** (mengelompokkan folder secara rapi: `[Tahun Akademik] / [NIM - Nama] / [Kategori]`).
-   - Penyimpanan lokal otomatis (*fallback*) jika Google Drive API belum diaktifkan.
+3. **Dashboard Monitoring Pendaftar per Tahun:**
+   * Rekapitulasi visual jumlah mahasiswa yang mendaftar pada Anda per tahun akademik (2023, 2024, 2025, 2026, dst.).
+   * Filter tahapan: Proposal, Penelitian, Seminar Hasil, Sidang Akhir, Lulus.
+   * Fitur review dan penilaian catatan logbook progres mingguan.
 
-4. **Autentikasi Multi-Role Terpisah:**
-   - Login terpisah untuk Dosen Pembimbing dan Mahasiswa.
-   - Halaman registrasi mandiri untuk mahasiswa bimbingan baru.
+4. **Pusat Berkas 3 Kategori:**
+   * Dokumen Naskah / Proposal (`.pdf`)
+   * Slide Materi Presentasi (`.pptx` / `.pdf`)
+   * File Raw Simulasi & Data Perhitungan (`.zip`, `.ipynb`, MATLAB, ANSYS, `.xlsx`)
 
 ---
 
-## 🔑 Akun Demo Siap Pakai
+## 🔑 Informasi Akun Tersedia
 
-Sistem sudah dilengkapi data awal (*seeded data*) untuk langsung diuji coba:
-
-| Role | Email | Password | Keterangan |
+| Akun | Email | Password | Keterangan |
 | :--- | :--- | :--- | :--- |
-| **Dosen Pembimbing** | `afif@kampus.ac.id` *(atau `dosen@kampus.ac.id`)* | `dosen123` | Afif Taufiiqul Hakim (Akses dashboard analitik & review) |
-| **Mahasiswa 1 (2025/2026)** | `mhs@kampus.ac.id` | `mhs123` | Ahmad Fauzi (NIM: 220401005) - Simulasi FEM |
-| **Mahasiswa 2 (2024/2025)** | `fajar@kampus.ac.id` | `mhs123` | Fajar Pratama (NIM: 210401021) - Termal Baterai |
-| **Mahasiswa 3 (2023/2024)** | `budi@kampus.ac.id` | `mhs123` | Budi Santoso (NIM: 200401010) - Lulus |
+| **Akun Resmi Pak Afif** | `afif@kampus.ac.id` | `afif123` | **Akun baru bersih (0 isian)** siap untuk mahasiswa bimbingan Anda |
+| **Akun Demo Dosen** | `demo.dosen@kampus.ac.id` | `demo123` | Contoh tampilan dosen yang sudah terisi beberapa data mahasiswa |
+| **Akun Demo Mahasiswa** | `mhs@kampus.ac.id` | `mhs123` | Contoh akun mahasiswa (Ahmad Fauzi) |
 
-*(Pada halaman Login juga tersedia tombol klik-cepat akun demo).*
-
----
-
-## 🚀 Cara Menjalankan Aplikasi Secara Lokal
-
-### Prasyarat:
-Pastikan Node.js (v18+) sudah terpasang di komputer Anda.
-
-### Langkah-langkah:
-1. Buka terminal di folder proyek ini:
-   ```bash
-   cd skripsi-management-system
-   ```
-
-2. Jalankan aplikasi dalam mode pengembangan:
-   ```bash
-   npm run dev
-   ```
-
-3. Buka browser dan akses:
-   ```
-   http://localhost:3000
-   ```
+*(Di halaman Login juga tersedia tombol satu-klik untuk langsung masuk ke akun Pak Afif).*
 
 ---
 
-## 📁 Panduan Menghubungkan Google Drive Anda
+## 🚀 Cara Menjalankan Secara Lokal
 
-Ada dua cara mudah untuk memanfaatkan Google Drive Anda:
-
-### Cara 1: Tautan Folder Google Drive (Paling Cepat & Praktis)
-1. Buat folder di Google Drive Anda, misalnya: `Skripsi_Mahasiswa_Bimbingan`.
-2. Klik kanan folder tersebut -> pilih **Bagikan (Share)** -> atur akses menjadi *"Siapa saja yang memiliki tautan sebagai Pelihat/Editor"*.
-3. Salin tautan folder tersebut.
-4. Masuk ke aplikasi sebagai Dosen -> klik tombol **Folder Google Drive** di kanan atas -> tempel tautan folder Anda -> klik **Simpan Tautan Drive**.
-5. Mahasiswa dapat mengunggah file besar dengan menyalin link share Google Drive file/folder mereka langsung ke formulir unggah berkas.
-
-### Cara 2: Sinkronisasi Otomatis Menggunakan Google Drive API (Opsional)
-1. Buka [Google Cloud Console](https://console.cloud.google.com/).
-2. Buat proyek baru dan aktifkan **Google Drive API**.
-3. Buat **Service Account**, lalu unduh kunci (*Key*) dalam format JSON.
-4. Buat file `.env` di folder proyek (salin dari `.env.example`):
-   ```env
-   GOOGLE_SERVICE_ACCOUNT_EMAIL=email-service-account@proyek-anda.iam.gserviceaccount.com
-   GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-   GOOGLE_DRIVE_FOLDER_ID=id_folder_drive_dosen_anda
-   ```
-5. Bagikan (*Share*) folder Google Drive Anda ke alamat email Service Account tersebut dengan hak akses **Editor**.
-
----
-
-## 🐙 Cara Memasukkan / Push Proyek ke GitHub Anda
-
-Ikuti langkah-langkah berikut untuk mengunggah proyek ini ke akun GitHub Anda:
-
-1. **Buat Repository Baru di GitHub:**
-   - Buka [GitHub](https://github.com/) dan login ke akun Anda.
-   - Klik tombol **New** (Buat Repository Baru).
-   - Beri nama repository (misal: `sistem-monitoring-skripsi`).
-   - Pilih **Public** atau **Private**, lalu biarkan opsi *"Initialize this repository with a README"* **tidak dicentang**.
-   - Klik **Create repository**.
-   - Salin URL repository Anda, contoh: `https://github.com/username-anda/sistem-monitoring-skripsi.git`.
-
-2. **Buka Terminal di Folder Proyek Ini:**
-   ```powershell
-   cd "C:\Users\avfha\.gemini\antigravity\scratch\skripsi-management-system"
-   ```
-
-3. **Inisialisasi Git & Tambahkan Remote:**
-   ```powershell
-   git init
-   git add .
-   git commit -m "Initial commit: Sistem Pelaporan Progres Skripsi & Repositori Simulasi"
-   git branch -M main
-   git remote add origin https://github.com/username-anda/sistem-monitoring-skripsi.git
-   ```
-
-4. **Kirim (*Push*) Kode ke GitHub:**
-   ```powershell
-   git push -u origin main
-   ```
-   *(Jika diminta autentikasi, masukkan akun GitHub Anda atau Personal Access Token).*
-
----
-
-## 🛠️ Struktur Direktori Proyek
-
+```powershell
+cd "C:\Users\avfha\.gemini\antigravity\scratch\skripsi-management-system"
+npm run dev
 ```
-skripsi-management-system/
-├── app/
-│   ├── api/
-│   │   ├── auth/            # Login, register, me, logout
-│   │   ├── dosen/           # Analisis tahunan, review logbook, data mahasiswa
-│   │   ├── mahasiswa/       # Pengajuan logbook, upload berkas PDF/PPT/Simulasi
-│   │   ├── drive/           # Pengaturan & status Google Drive
-│   │   └── files/           # Penyaji berkas lokal
-│   ├── dosen/               # Dashboard Dosen (statistik tahunan & review berkas)
-│   ├── mahasiswa/           # Portal Mahasiswa (logbook & repositori berkas)
-│   ├── login/               # Halaman masuk sistem terpisah
-│   ├── register/            # Halaman pendaftaran mahasiswa baru
-│   ├── layout.tsx           # Layout dasar & font
-│   └── page.tsx             # Halaman utama (landing portal)
-├── data/
-│   └── db.json              # Basis data file-based (otomatis dibuat dan diisi)
-├── lib/
-│   ├── auth.ts              # Manajemen sesi JWT
-│   ├── db.ts                # Model data & operasi CRUD
-│   └── googleDrive.ts       # Integrasi Google Drive API
-├── uploads/                 # Folder penyimpanan lokal (fallback)
-├── .env.example             # Contoh variabel lingkungan
-├── package.json             # Dependensi proyek
-└── README.md                # Dokumentasi lengkap
+Buka browser di: **`http://localhost:3000`**
+
+---
+
+## 🔐 Panduan Otorisasi Google Drive (OAuth 2.0)
+
+Untuk mengaktifkan tombol otorisasi Google Drive otomatis bagi setiap dosen:
+1. Buka [Google Cloud Console](https://console.cloud.google.com/).
+2. Buat project baru dan aktifkan **Google Drive API**.
+3. Buka **APIs & Services > Credentials > Create Credentials > OAuth client ID**.
+4. Pilih tipe **Web application**.
+5. Tambahkan Authorized Redirect URIs:
+   - Lokal: `http://localhost:3000/api/auth/google/callback`
+   - Online (Vercel): `https://nama-aplikasi-anda.vercel.app/api/auth/google/callback`
+6. Salin Client ID dan Client Secret ke berkas `.env`:
+   ```env
+   GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=xxx
+   ```
+7. Sekarang, setiap dosen dapat mengklik tombol hijau **"Otorisasi Akun Google Drive Saya"** di dashboard untuk menghubungkan Drive pribadi masing-masing!
+*(Sebagai alternatif cepat tanpa setting Google Cloud, dosen juga bisa langsung memasukkan link folder Google Drive manual).*
+
+---
+
+## 🐙 Menyinkronkan ke GitHub
+
+```powershell
+cd "C:\Users\avfha\.gemini\antigravity\scratch\skripsi-management-system"
+git add .
+git commit -m "feat: Akun bersih Pak Afif, pendaftaran multi-dosen, dan otorisasi Google Drive per dosen"
+git push
 ```

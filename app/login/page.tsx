@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { GraduationCap, BookOpen, ShieldCheck, UserCheck, AlertCircle, ArrowRight } from "lucide-react";
+import { GraduationCap, BookOpen, ShieldCheck, UserCheck, AlertCircle, ArrowRight, UserPlus } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -44,13 +44,19 @@ export default function LoginPage() {
     }
   };
 
-  const setDemoDosen = () => {
+  const setLoginAfif = () => {
     setEmail("afif@kampus.ac.id");
-    setPassword("dosen123");
-    handleLogin(undefined, "afif@kampus.ac.id", "dosen123");
+    setPassword("afif123");
+    handleLogin(undefined, "afif@kampus.ac.id", "afif123");
   };
 
-  const setDemoMhs = () => {
+  const setLoginDemoDosen = () => {
+    setEmail("demo.dosen@kampus.ac.id");
+    setPassword("demo123");
+    handleLogin(undefined, "demo.dosen@kampus.ac.id", "demo123");
+  };
+
+  const setLoginDemoMhs = () => {
     setEmail("mhs@kampus.ac.id");
     setPassword("mhs123");
     handleLogin(undefined, "mhs@kampus.ac.id", "mhs123");
@@ -75,28 +81,43 @@ export default function LoginPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4">
         <div className="bg-white/10 backdrop-blur-md py-8 px-6 shadow-2xl rounded-2xl border border-white/20 sm:px-10 text-slate-100">
-          {/* Quick Demo Login Buttons */}
+          {/* Tombol Masuk Cepat */}
           <div className="mb-6 p-4 rounded-xl bg-indigo-500/10 border border-indigo-400/20">
-            <p className="text-xs font-semibold uppercase tracking-wider text-indigo-300 mb-2 flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4" /> Uji Coba Cepat (Akun Demo)
+            <p className="text-xs font-semibold uppercase tracking-wider text-indigo-300 mb-2.5 flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4" /> Akses Cepat Masuk Akun:
             </p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-2">
               <button
                 type="button"
-                onClick={setDemoDosen}
-                className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-medium text-white transition shadow text-center"
+                onClick={setLoginAfif}
+                className="w-full flex items-center justify-between py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition shadow"
               >
-                <BookOpen className="w-3.5 h-3.5" />
-                Login Dosen (Afif Taufiiqul Hakim)
+                <span className="flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5" />
+                  Akun Saya (Afif Taufiiqul Hakim)
+                </span>
+                <span className="text-[10px] bg-indigo-700/80 px-1.5 py-0.5 rounded font-normal">Akun Baru/Bersih</span>
               </button>
-              <button
-                type="button"
-                onClick={setDemoMhs}
-                className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-medium text-white transition shadow text-center"
-              >
-                <UserCheck className="w-3.5 h-3.5" />
-                Login Mahasiswa
-              </button>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={setLoginDemoDosen}
+                  className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-[11px] font-medium text-slate-200 border border-slate-700 transition"
+                  title="Lihat contoh dashboard dosen dengan data terisi"
+                >
+                  <BookOpen className="w-3 h-3 text-amber-400" />
+                  Demo Dosen
+                </button>
+                <button
+                  type="button"
+                  onClick={setLoginDemoMhs}
+                  className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-[11px] font-medium text-slate-200 border border-slate-700 transition"
+                >
+                  <UserCheck className="w-3 h-3 text-emerald-400" />
+                  Demo Mahasiswa
+                </button>
+              </div>
             </div>
           </div>
 
@@ -146,10 +167,13 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 text-center text-xs text-slate-400">
-            Mahasiswa bimbingan baru?{" "}
-            <Link href="/register" className="font-semibold text-indigo-400 hover:text-indigo-300 underline">
-              Daftar akun di sini
+          <div className="mt-6 pt-4 border-t border-slate-700/60 flex items-center justify-between text-xs text-slate-400">
+            <span>Belum memiliki akun?</span>
+            <Link
+              href="/register"
+              className="font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 underline"
+            >
+              <UserPlus className="w-3.5 h-3.5" /> Daftar Akun Baru
             </Link>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { readDatabase } from "@/lib/db";
+import { isGoogleOAuthConfigured } from "@/lib/googleDrive";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -9,7 +10,12 @@ export async function GET() {
   }
 
   const db = readDatabase();
-  const students = db.users.filter((u) => u.role === "MAHASISWA");
+  // Filter mahasiswa khusus bimbingan dosen ini
+  const students = db.users.filter(
+    (u) => u.role === "MAHASISWA" && (u.dosenId === user.id || (!u.dosenId && user.id === "usr-afif-hakim"))
+  );
+
+  const studentIds = students.map((s) => s.id);
 
   // Breakdown per Academic Year
   const yearMap: { [year: string]: number } = {};
@@ -37,24 +43,38 @@ export async function GET() {
     }
   });
 
-  // Pending Reviews
-  const pendingReviews = db.progressLogs.filter((log) => log.status === "MENUNGGU_REVIEW").length;
+  // Pending Reviews untuk mahasiswa dosen ini
+  const relevantLogs = db.progressLogs.filter((log) => studentIds.includes(log.studentId));
+  const pendingReviews = relevantLogs.filter((log) => log.status === "MENUNGGU_REVIEW").length;
 
   // File stats
+  const relevantFiles = db.files.filter((f) => studentIds.includes(f.studentId));
   const fileStats = {
-    pdf: db.files.filter((f) => f.category === "DOKUMEN_PDF").length,
-    presentation: db.files.filter((f) => f.category === "PRESENTASI").length,
-    rawSimulation: db.files.filter((f) => f.category === "SIMULASI_RAW").length,
-    total: db.files.length,
+    pdf: relevantFiles.filter((f) => f.category === "DOKUMEN_PDF").length,
+    presentation: relevantFiles.filter((f) => f.category === "PRESENTASI").length,
+    rawSimulation: relevantFiles.filter((f) => f.category === "SIMULASI_RAW").length,
+    total: relevantFiles.length,
   };
 
+  // Google Drive info dosen saat ini
+  const currentDosen = db.users.find((u) => u.id === user.id) || user;
+  const driveAuth = currentDosen.driveAuth || { connected: false };
+
   return NextResponse.json({
+    dosenName: currentDosen.name,
+    dosenEmail: currentDosen.email,
     totalStudents: students.length,
     byYear,
     byStatus,
     pendingReviews,
     fileStats,
-    mainDriveFolderUrl: db.settings?.mainDriveFolderUrl || "",
+    driveAuth: {
+      connected: Boolean(driveAuth.connected),
+      googleEmail: driveAuth.googleEmail || "",
+      mainFolderUrl: driveAuth.mainFolderUrl || "",
+      connectedAt: driveAuth.connectedAt || "",
+    },
+    isOAuthConfigured: isGoogleOAuthConfigured(),
     years: Array.from(new Set(students.map((s) => s.academicYear).filter(Boolean))),
   });
 }

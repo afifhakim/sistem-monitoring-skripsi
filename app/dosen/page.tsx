@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   GraduationCap,
   Users,
@@ -19,18 +19,29 @@ import {
   ChevronRight,
   MessageSquare,
   Settings,
-  Sparkles,
   RefreshCw,
-  FolderGit2,
+  Link as LinkIcon,
+  Copy,
+  Check,
+  ShieldCheck,
+  Unlink,
 } from "lucide-react";
 
 interface Stats {
+  dosenName: string;
+  dosenEmail: string;
   totalStudents: number;
   byYear: { year: string; count: number }[];
   byStatus: { [status: string]: number };
   pendingReviews: number;
   fileStats: { pdf: number; presentation: number; rawSimulation: number; total: number };
-  mainDriveFolderUrl: string;
+  driveAuth: {
+    connected: boolean;
+    googleEmail?: string;
+    mainFolderUrl?: string;
+    connectedAt?: string;
+  };
+  isOAuthConfigured: boolean;
   years: string[];
 }
 
@@ -51,14 +62,20 @@ interface Student {
   logs: any[];
 }
 
-export default function DosenDashboard() {
+function DosenDashboardContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [stats, setStats] = useState<Stats | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedYear, setSelectedYear] = useState<string>("ALL");
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+
+  // Notification Banner
+  const [notification, setNotification] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   // Modal Detail Mahasiswa
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -74,6 +91,7 @@ export default function DosenDashboard() {
   const [showDriveModal, setShowDriveModal] = useState(false);
   const [driveUrlInput, setDriveUrlInput] = useState("");
   const [savingDriveUrl, setSavingDriveUrl] = useState(false);
+  const [connectingDrive, setConnectingDrive] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -93,8 +111,8 @@ export default function DosenDashboard() {
 
       setStats(statsData);
       setStudents(studentsData.students || []);
-      if (statsData.mainDriveFolderUrl && !driveUrlInput) {
-        setDriveUrlInput(statsData.mainDriveFolderUrl);
+      if (statsData.driveAuth?.mainFolderUrl && !driveUrlInput) {
+        setDriveUrlInput(statsData.driveAuth.mainFolderUrl);
       }
     } catch (err) {
       console.error("Gagal memuat data:", err);
@@ -105,6 +123,12 @@ export default function DosenDashboard() {
 
   useEffect(() => {
     fetchData();
+
+    if (searchParams.get("drive_success")) {
+      setNotification("Akun Google Drive Anda berhasil dihubungkan!");
+    } else if (searchParams.get("drive_error")) {
+      setNotification(`Gagal menghubungkan Google Drive: ${searchParams.get("drive_error")}`);
+    }
   }, [selectedYear, selectedStatus]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -115,6 +139,60 @@ export default function DosenDashboard() {
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
+  };
+
+  const handleConnectGoogleDrive = async () => {
+    setConnectingDrive(true);
+    try {
+      const res = await fetch("/api/auth/google/url");
+      const data = await res.json();
+
+      if (data.isConfigured && data.authUrl) {
+        // Arahkan langsung ke halaman izin Google
+        window.location.href = data.authUrl;
+      } else {
+        // Tampilkan modal pengaturan manual & instruksi OAuth
+        setShowDriveModal(true);
+      }
+    } catch (err) {
+      setShowDriveModal(true);
+    } finally {
+      setConnectingDrive(false);
+    }
+  };
+
+  const handleDisconnectGoogleDrive = async () => {
+    if (!confirm("Apakah Anda yakin ingin memutuskan integrasi Google Drive akun Anda?")) return;
+    try {
+      const res = await fetch("/api/auth/google/disconnect", { method: "POST" });
+      if (res.ok) {
+        setNotification("Google Drive berhasil diputus.");
+        fetchData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSaveDriveUrl = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingDriveUrl(true);
+    try {
+      const res = await fetch("/api/drive/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mainDriveFolderUrl: driveUrlInput }),
+      });
+      if (res.ok) {
+        setShowDriveModal(false);
+        setNotification("Tautan Google Drive berhasil disimpan.");
+        fetchData();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingDriveUrl(false);
+    }
   };
 
   const handleStatusChange = async (studentId: string, newStatus: string) => {
@@ -155,7 +233,6 @@ export default function DosenDashboard() {
         setReviewingLog(null);
         setDosenNotes("");
         fetchData();
-        // Update selectedStudent logs
         if (selectedStudent) {
           const updatedLogs = selectedStudent.logs.map((l) =>
             l.id === reviewingLog.id
@@ -172,23 +249,11 @@ export default function DosenDashboard() {
     }
   };
 
-  const handleSaveDriveUrl = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSavingDriveUrl(true);
-    try {
-      const res = await fetch("/api/drive/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mainDriveFolderUrl: driveUrlInput }),
-      });
-      if (res.ok) {
-        setShowDriveModal(false);
-        fetchData();
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSavingDriveUrl(false);
+  const copyRegisterLink = () => {
+    if (typeof window !== "undefined") {
+      navigator.clipboard.writeText(`${window.location.origin}/register`);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
     }
   };
 
@@ -219,8 +284,10 @@ export default function DosenDashboard() {
               <GraduationCap className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-sm sm:text-base leading-tight">Dashboard Dosen Pembimbing: Afif Taufiiqul Hakim</h1>
-              <p className="text-[11px] text-slate-400">Pemantauan Progres Mahasiswa Skripsi & Repositori Berkas</p>
+              <h1 className="font-bold text-sm sm:text-base leading-tight">
+                Dashboard Pembimbing: {stats?.dosenName || "Afif Taufiiqul Hakim"}
+              </h1>
+              <p className="text-[11px] text-slate-400">Pemantauan Mahasiswa Skripsi & Repositori Simulasi</p>
             </div>
           </div>
 
@@ -231,7 +298,7 @@ export default function DosenDashboard() {
               title="Pengaturan Google Drive"
             >
               <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden sm:inline">Folder Google Drive</span>
+              <span className="hidden sm:inline">Google Drive</span>
             </button>
 
             <button
@@ -245,7 +312,96 @@ export default function DosenDashboard() {
         </div>
       </header>
 
+      {/* Alert Notification */}
+      {notification && (
+        <div className="bg-indigo-600 text-white text-xs px-4 py-2.5 text-center font-medium flex items-center justify-center gap-2">
+          <span>{notification}</span>
+          <button onClick={() => setNotification(null)} className="underline ml-2 opacity-80 hover:opacity-100">
+            Tutup
+          </button>
+        </div>
+      )}
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-6">
+        {/* Google Drive Status Banner */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div
+                className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                  stats?.driveAuth?.connected ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : "bg-amber-50 text-amber-600 border border-amber-200"
+                }`}
+              >
+                <FolderOpen className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-sm text-slate-900">
+                    Integrasi Google Drive Dosen Pembimbing
+                  </h3>
+                  {stats?.driveAuth?.connected ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3" /> Terhubung ({stats.driveAuth.googleEmail || "Google Account"})
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                      Belum Terhubung
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed max-w-2xl">
+                  {stats?.driveAuth?.connected
+                    ? `Berkas PDF, slide presentasi, dan file raw simulasi dari mahasiswa bimbingan Anda akan otomatis tersimpan langsung ke Google Drive (${stats.driveAuth.googleEmail}).`
+                    : "Hubungkan akun Google Drive Anda agar setiap berkas yang diunggah mahasiswa bimbingan Anda otomatis terorganisir ke dalam folder Google Drive pribadi Anda."}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {stats?.driveAuth?.connected ? (
+                <>
+                  {stats.driveAuth.mainFolderUrl && (
+                    <a
+                      href={stats.driveAuth.mainFolderUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold flex items-center gap-1.5 transition"
+                    >
+                      <FolderOpen className="w-3.5 h-3.5" />
+                      Buka Folder Drive Saya
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                  <button
+                    onClick={handleDisconnectGoogleDrive}
+                    className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 text-xs font-medium flex items-center gap-1 transition"
+                  >
+                    <Unlink className="w-3.5 h-3.5" />
+                    Putus Hubungan
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={handleConnectGoogleDrive}
+                    disabled={connectingDrive}
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow transition"
+                  >
+                    <FolderOpen className="w-3.5 h-3.5" />
+                    {connectingDrive ? "Menghubungkan..." : "Hubungkan Akun Google Drive Saya"}
+                  </button>
+                  <button
+                    onClick={() => setShowDriveModal(true)}
+                    className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition"
+                  >
+                    Pengaturan Manual
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* KPI & Summary Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
@@ -253,7 +409,7 @@ export default function DosenDashboard() {
               <div>
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Bimbingan</p>
                 <h3 className="text-2xl font-extrabold text-slate-800 mt-1">{stats?.totalStudents || 0}</h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">Seluruh Angkatan</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Mahasiswa Aktif & Lulus</p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
                 <Users className="w-6 h-6" />
@@ -266,7 +422,7 @@ export default function DosenDashboard() {
               <div>
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Butuh Review</p>
                 <h3 className="text-2xl font-extrabold text-amber-600 mt-1">{stats?.pendingReviews || 0}</h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">Logbook Menunggu Feedback</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Logbook Menunggu Tanggapan</p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
                 <Clock className="w-6 h-6" />
@@ -279,7 +435,7 @@ export default function DosenDashboard() {
               <div>
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Telah Lulus</p>
                 <h3 className="text-2xl font-extrabold text-emerald-600 mt-1">{stats?.byStatus?.LULUS || 0}</h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">Skripsi Selesai</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Skripsi Telah Selesai</p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
                 <CheckCircle2 className="w-6 h-6" />
@@ -290,7 +446,7 @@ export default function DosenDashboard() {
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Berkas Terunggah</p>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Berkas Tersimpan</p>
                 <h3 className="text-2xl font-extrabold text-blue-600 mt-1">{stats?.fileStats?.total || 0}</h3>
                 <p className="text-[11px] text-slate-400 mt-0.5">
                   {stats?.fileStats?.pdf || 0} PDF, {stats?.fileStats?.presentation || 0} PPT, {stats?.fileStats?.rawSimulation || 0} Raw
@@ -303,61 +459,50 @@ export default function DosenDashboard() {
           </div>
         </div>
 
-        {/* Breakdown Mahasiswa per Tahun (Distribution Chart) */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-            <div>
-              <h2 className="text-base font-bold text-slate-800">Distribusi Mahasiswa Pendaftar per Tahun</h2>
-              <p className="text-xs text-slate-500">Melihat perbandingan jumlah mahasiswa bimbingan yang mendaftar pada Afif Taufiiqul Hakim setiap tahun akademik</p>
+        {/* Distribution per Year */}
+        {stats && stats.byYear.length > 0 && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-800">Distribusi Mahasiswa Pendaftar per Tahun</h2>
+                <p className="text-xs text-slate-500">Melihat perbandingan jumlah mahasiswa bimbingan yang mendaftar pada Anda setiap tahun akademik</p>
+              </div>
             </div>
-            {stats?.mainDriveFolderUrl && (
-              <a
-                href={stats.mainDriveFolderUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-medium border border-amber-200 transition"
-              >
-                <FolderOpen className="w-3.5 h-3.5 text-amber-600" />
-                Buka Google Drive Utama
-                <ExternalLink className="w-3 h-3 ml-1" />
-              </a>
-            )}
-          </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 pt-2">
-            {stats?.byYear.map((item) => {
-              const maxCount = Math.max(...(stats?.byYear.map((y) => y.count) || [1]), 1);
-              const percent = Math.round((item.count / maxCount) * 100);
-              const isSelected = selectedYear === item.year;
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 pt-2">
+              {stats.byYear.map((item) => {
+                const maxCount = Math.max(...stats.byYear.map((y) => y.count), 1);
+                const percent = Math.round((item.count / maxCount) * 100);
+                const isSelected = selectedYear === item.year;
 
-              return (
-                <div
-                  key={item.year}
-                  onClick={() => setSelectedYear(isSelected ? "ALL" : item.year)}
-                  className={`cursor-pointer rounded-xl p-4 border transition ${
-                    isSelected
-                      ? "border-indigo-600 bg-indigo-50/70 ring-2 ring-indigo-500/20"
-                      : "border-slate-200 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-300"
-                  }`}
-                >
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs font-semibold text-slate-700">{item.year}</span>
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-white border border-slate-200 text-indigo-600 shadow-sm">
-                      {item.count} Mhs
-                    </span>
+                return (
+                  <div
+                    key={item.year}
+                    onClick={() => setSelectedYear(isSelected ? "ALL" : item.year)}
+                    className={`cursor-pointer rounded-xl p-4 border transition ${
+                      isSelected
+                        ? "border-indigo-600 bg-indigo-50/70 ring-2 ring-indigo-500/20"
+                        : "border-slate-200 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-semibold text-slate-700">{item.year}</span>
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-white border border-slate-200 text-indigo-600 shadow-sm">
+                        {item.count} Mhs
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-200 rounded-full h-2 mt-3 overflow-hidden">
+                      <div
+                        className="bg-indigo-600 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
                   </div>
-                  {/* Progress bar visual */}
-                  <div className="w-full bg-slate-200 rounded-full h-2 mt-3 overflow-hidden">
-                    <div
-                      className="bg-indigo-600 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${percent}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Filter and Search Bar */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-3">
@@ -366,7 +511,6 @@ export default function DosenDashboard() {
               <Filter className="w-3.5 h-3.5" /> Filter:
             </span>
 
-            {/* Filter Tahun */}
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
@@ -380,13 +524,12 @@ export default function DosenDashboard() {
               ))}
             </select>
 
-            {/* Filter Status */}
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
               className="text-xs font-medium bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              <option value="ALL">Semua Tahapan Status</option>
+              <option value="ALL">Semua Status</option>
               <option value="PROPOSAL">Proposal</option>
               <option value="PENELITIAN">Penelitian</option>
               <option value="SEMINAR_HASIL">Seminar Hasil</option>
@@ -395,7 +538,6 @@ export default function DosenDashboard() {
             </select>
           </div>
 
-          {/* Search Form */}
           <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 w-full md:w-72">
             <div className="relative w-full">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -416,25 +558,51 @@ export default function DosenDashboard() {
           </form>
         </div>
 
-        {/* Students Table / Grid */}
+        {/* Students Table / Empty State */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
             <h3 className="font-bold text-slate-800 text-sm">
-              Daftar Mahasiswa Bimbingan ({students.length})
+              Daftar Mahasiswa Bimbingan Anda ({students.length})
             </h3>
-            <button
-              onClick={fetchData}
-              className="text-slate-400 hover:text-slate-600 text-xs flex items-center gap-1 transition"
-            >
-              <RefreshCw className="w-3.5 h-3.5" /> Segarkan Data
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={copyRegisterLink}
+                className="text-indigo-600 hover:text-indigo-700 text-xs font-semibold flex items-center gap-1 transition"
+              >
+                {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedLink ? "Link Tersalin!" : "Salin Link Pendaftaran Mahasiswa"}
+              </button>
+              <button
+                onClick={fetchData}
+                className="text-slate-400 hover:text-slate-600 text-xs flex items-center gap-1 transition"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Segarkan
+              </button>
+            </div>
           </div>
 
           {loading ? (
             <div className="p-12 text-center text-slate-400 text-xs">Memuat data mahasiswa...</div>
           ) : students.length === 0 ? (
-            <div className="p-12 text-center text-slate-400 text-xs">
-              Tidak ada data mahasiswa dengan kriteria filter ini.
+            /* Empty State Baru / Bersih untuk Pak Afif */
+            <div className="p-12 text-center max-w-md mx-auto">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-3">
+                <Users className="w-7 h-7" />
+              </div>
+              <h4 className="font-bold text-base text-slate-800">Belum Ada Mahasiswa Bimbingan</h4>
+              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                Akun Anda dalam keadaan bersih. Mahasiswa dapat mendaftar sendiri melalui halaman pendaftaran dan memilih{" "}
+                <strong>{stats?.dosenName || "Afif Taufiiqul Hakim"}</strong> sebagai dosen pembimbing.
+              </p>
+              <div className="mt-5 flex justify-center gap-3">
+                <button
+                  onClick={copyRegisterLink}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow transition"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  {copiedLink ? "Link Pendaftaran Tersalin!" : "Bagikan Link Pendaftaran ke Mahasiswa"}
+                </button>
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -470,23 +638,17 @@ export default function DosenDashboard() {
                         <div className="text-[11px] text-indigo-600 mt-0.5">{student.topic || "-"}</div>
                       </td>
 
-                      <td className="py-3.5 px-4">
-                        {getStatusBadge(student.status)}
-                      </td>
+                      <td className="py-3.5 px-4">{getStatusBadge(student.status)}</td>
 
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-2">
-                          <span className="text-[11px] text-slate-500">
-                            {student.logsCount} logbook
-                          </span>
+                          <span className="text-[11px] text-slate-500">{student.logsCount} logbook</span>
                           {student.pendingLogs > 0 && (
                             <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 animate-pulse">
                               {student.pendingLogs} butuh review
                             </span>
                           )}
-                          <span className="text-[11px] text-slate-400">
-                            • {student.files.length} berkas
-                          </span>
+                          <span className="text-[11px] text-slate-400">• {student.files.length} berkas</span>
                         </div>
                       </td>
 
@@ -515,7 +677,6 @@ export default function DosenDashboard() {
       {selectedStudent && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
-            {/* Modal Header */}
             <div className="p-6 bg-slate-900 text-white flex items-start justify-between">
               <div>
                 <div className="flex items-center gap-2">
@@ -527,16 +688,6 @@ export default function DosenDashboard() {
                 <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-slate-400">
                   <span>Angkatan: <strong className="text-white">{selectedStudent.academicYear}</strong></span>
                   <span>Topik: <strong className="text-white">{selectedStudent.topic}</strong></span>
-                  {selectedStudent.driveFolderUrl && (
-                    <a
-                      href={selectedStudent.driveFolderUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-amber-400 hover:underline"
-                    >
-                      <FolderOpen className="w-3.5 h-3.5" /> Folder Drive Mahasiswa
-                    </a>
-                  )}
                 </div>
               </div>
               <button
@@ -547,7 +698,6 @@ export default function DosenDashboard() {
               </button>
             </div>
 
-            {/* Quick Change Status Bar */}
             <div className="px-6 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs">
               <span className="font-medium text-slate-600">Perbarui Status Skripsi Mahasiswa:</span>
               <div className="flex gap-1.5">
@@ -567,7 +717,6 @@ export default function DosenDashboard() {
               </div>
             </div>
 
-            {/* Tabs Navigation */}
             <div className="px-6 border-b border-slate-200 flex gap-6 text-xs font-semibold text-slate-500">
               <button
                 onClick={() => setActiveTab("logs")}
@@ -591,7 +740,6 @@ export default function DosenDashboard() {
               </button>
             </div>
 
-            {/* Modal Body */}
             <div className="p-6 overflow-y-auto flex-1 text-xs">
               {activeTab === "logs" ? (
                 <div className="space-y-4">
@@ -671,11 +819,6 @@ export default function DosenDashboard() {
                                 <MessageSquare className="w-3.5 h-3.5" /> Catatan & Arahan Pembimbing:
                               </strong>
                               <p className="text-indigo-950 mt-1 whitespace-pre-wrap">{log.dosenNotes}</p>
-                              {log.reviewedAt && (
-                                <span className="text-[10px] text-indigo-400 mt-1 block">
-                                  Ditanggapi pada: {new Date(log.reviewedAt).toLocaleDateString("id-ID")}
-                                </span>
-                              )}
                             </div>
                           )}
                         </div>
@@ -684,7 +827,6 @@ export default function DosenDashboard() {
                   )}
                 </div>
               ) : (
-                /* Tab Files (Categorized: PDF, Presentation, Raw Simulation) */
                 <div className="space-y-6">
                   {/* Category 1: PDF Documents */}
                   <div>
@@ -780,7 +922,7 @@ export default function DosenDashboard() {
                     </div>
                   </div>
 
-                  {/* Category 3: Raw Simulation Files & Calculations */}
+                  {/* Category 3: Raw Simulation */}
                   <div>
                     <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider mb-2 flex items-center gap-1.5 text-blue-700">
                       <FileCode className="w-4 h-4" /> 3. File Raw Simulasi & Data Perhitungan (.zip, scripts, dataset)
@@ -831,7 +973,6 @@ export default function DosenDashboard() {
               )}
             </div>
 
-            {/* Modal Footer */}
             <div className="p-4 bg-slate-100 border-t border-slate-200 flex justify-end">
               <button
                 onClick={() => setSelectedStudent(null)}
@@ -920,56 +1061,92 @@ export default function DosenDashboard() {
       {/* Modal Pengaturan Google Drive */}
       {showDriveModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 text-xs">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 text-xs max-h-[90vh] overflow-y-auto">
             <div className="flex items-center gap-2 mb-2 text-indigo-600">
               <FolderOpen className="w-5 h-5 text-amber-500" />
-              <h3 className="text-base font-bold text-slate-900">Pengaturan Folder Google Drive Utama</h3>
+              <h3 className="text-base font-bold text-slate-900">Pengaturan Google Drive Dosen</h3>
             </div>
             <p className="text-slate-500 leading-relaxed mb-4">
-              Masukkan tautan Google Drive utama Anda (folder tempat seluruh berkas skripsi mahasiswa disimpan).
-              Tautan ini akan dapat diakses dari dashboard Anda untuk memeriksa folder mahasiswa per tahun akademik.
+              Pilih metode integrasi Google Drive akun Anda. Dosen lain yang mendaftar juga dapat menghubungkan Google Drive akun mereka sendiri secara terpisah.
             </p>
 
-            <form onSubmit={handleSaveDriveUrl} className="space-y-4">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">
-                  Tautan Folder Google Drive Utama:
-                </label>
-                <input
-                  type="url"
-                  required
-                  placeholder="https://drive.google.com/drive/folders/..."
-                  value={driveUrlInput}
-                  onChange={(e) => setDriveUrlInput(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 font-mono text-xs"
-                />
-              </div>
-
-              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 leading-relaxed">
-                <strong className="block mb-1">💡 Tips Sinkronisasi Otomatis:</strong>
-                Untuk mengaktifkan unggah otomatis langsung via sistem ke Google Drive, Anda juga dapat menambahkan kredensial Google Service Account di berkas <code className="bg-amber-100 px-1 rounded">.env</code>.
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
+            <div className="space-y-4">
+              {/* Opsi 1: Satu Klik OAuth Login */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <h4 className="font-bold text-slate-900 mb-1 flex items-center gap-1.5 text-xs">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" /> Metode 1: Hubungkan Akun Google Langsung (OAuth)
+                </h4>
+                <p className="text-slate-500 text-[11px] mb-3">
+                  Setiap dosen cukup mengklik tombol di bawah untuk memberikan otorisasi akun Google Drive masing-masing.
+                </p>
                 <button
                   type="button"
-                  onClick={() => setShowDriveModal(false)}
-                  className="px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 font-semibold text-slate-700 transition"
+                  onClick={handleConnectGoogleDrive}
+                  disabled={connectingDrive}
+                  className="w-full py-2.5 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold flex items-center justify-center gap-2 transition shadow-sm"
                 >
-                  Tutup
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingDriveUrl}
-                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow transition disabled:opacity-50"
-                >
-                  {savingDriveUrl ? "Menyimpan..." : "Simpan Tautan Drive"}
+                  <FolderOpen className="w-4 h-4" />
+                  {connectingDrive ? "Menyiapkan Otorisasi..." : "Otorisasi Akun Google Drive Saya"}
                 </button>
               </div>
-            </form>
+
+              {/* Opsi 2: Input Tautan Folder Manual */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <h4 className="font-bold text-slate-900 mb-1 flex items-center gap-1.5 text-xs">
+                  <LinkIcon className="w-4 h-4 text-indigo-600" /> Metode 2: Tautan Folder Google Drive Manual
+                </h4>
+                <p className="text-slate-500 text-[11px] mb-3">
+                  Buat folder di Google Drive Anda (misal: <code>Skripsi_Afif_Taufiiqul_Hakim</code>), set izin berbagi (share link), dan tempel tautannya di bawah:
+                </p>
+
+                <form onSubmit={handleSaveDriveUrl} className="space-y-3">
+                  <div>
+                    <input
+                      type="url"
+                      required
+                      placeholder="https://drive.google.com/drive/folders/..."
+                      value={driveUrlInput}
+                      onChange={(e) => setDriveUrlInput(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 font-mono text-xs"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowDriveModal(false)}
+                      className="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 font-semibold text-slate-700 transition"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={savingDriveUrl}
+                      className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow transition disabled:opacity-50"
+                    >
+                      {savingDriveUrl ? "Menyimpan..." : "Simpan Tautan Drive"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+export default function DosenDashboard() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-100 flex items-center justify-center text-xs text-slate-500">
+          Memuat dashboard...
+        </div>
+      }
+    >
+      <DosenDashboardContent />
+    </Suspense>
   );
 }

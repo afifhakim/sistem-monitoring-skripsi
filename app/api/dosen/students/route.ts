@@ -14,7 +14,10 @@ export async function GET(request: Request) {
   const search = searchParams.get("search")?.toLowerCase();
 
   const db = readDatabase();
-  let students = db.users.filter((u) => u.role === "MAHASISWA");
+  // Hanya ambil mahasiswa yang dibimbing oleh dosen ini
+  let students = db.users.filter(
+    (u) => u.role === "MAHASISWA" && (u.dosenId === user.id || (!u.dosenId && user.id === "usr-afif-hakim"))
+  );
 
   if (yearFilter && yearFilter !== "ALL") {
     students = students.filter((s) => s.academicYear === yearFilter);

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { readDatabase, writeDatabase, UploadedFile, FileCategory } from "@/lib/db";
-import { isGoogleDriveConfigured, getOrCreateFolder, uploadToDrive } from "@/lib/googleDrive";
+import { getOrCreateSubfolder, uploadToDosenDrive } from "@/lib/googleDrive";
 import fs from "fs";
 import path from "path";
 
@@ -19,6 +19,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Akses ditolak." }, { status: 403 });
   }
 
+  const db = readDatabase();
+  const student = user;
+  const dosenId = student.dosenId || "usr-afif-hakim";
+  const dosen = db.users.find((u) => u.id === dosenId);
+
   const contentType = request.headers.get("content-type") || "";
 
   // 1. Tautan Langsung Google Drive (Shared Link)
@@ -33,13 +38,13 @@ export async function POST(request: Request) {
         );
       }
 
-      const db = readDatabase();
       const newFile: UploadedFile = {
         id: `file-${Date.now()}`,
-        studentId: user.id,
-        studentName: user.name,
-        nim: user.nim || "-",
-        academicYear: user.academicYear || "Belum Ditentukan",
+        studentId: student.id,
+        dosenId,
+        studentName: student.name,
+        nim: student.nim || "-",
+        academicYear: student.academicYear || "Belum Ditentukan",
         progressLogId: progressLogId || undefined,
         category: category as FileCategory,
         fileName,
@@ -78,16 +83,21 @@ export async function POST(request: Request) {
     let driveFileId: string | undefined;
     let driveWebViewLink: string | undefined;
 
-    // Cek apakah Google Drive API sudah dihubungkan
-    if (isGoogleDriveConfigured()) {
+    // Cek apakah Dosen Pembimbing mahasiswa ini sudah mengizinkan koneksi Google Drive OAuth
+    if (dosen && dosen.driveAuth?.connected && dosen.driveAuth?.refreshToken) {
       try {
-        const rootFolder = process.env.GOOGLE_DRIVE_FOLDER_ID || undefined;
-        // Buat folder berjenjang: [Tahun Akademik] / [NIM - Nama]
-        const yearFolderId = await getOrCreateFolder(user.academicYear || "Tahun_Umum", rootFolder);
-        const studentFolderName = `${user.nim || "MHS"}_${user.name.replace(/[^a-zA-Z0-9]/g, "_")}`;
-        const studentFolderId = await getOrCreateFolder(studentFolderName, yearFolderId || undefined);
+        const tokens = {
+          access_token: dosen.driveAuth.accessToken,
+          refresh_token: dosen.driveAuth.refreshToken,
+        };
 
-        const uploadResult = await uploadToDrive(
+        const rootFolderId = dosen.driveAuth.mainFolderId || undefined;
+        const yearFolderId = await getOrCreateSubfolder(tokens, student.academicYear || "Tahun_Umum", rootFolderId);
+        const studentFolderName = `${student.nim || "MHS"}_${student.name.replace(/[^a-zA-Z0-9]/g, "_")}`;
+        const studentFolderId = await getOrCreateSubfolder(tokens, studentFolderName, yearFolderId || undefined);
+
+        const uploadResult = await uploadToDosenDrive(
+          tokens,
           buffer,
           file.name,
           file.type || "application/octet-stream",
@@ -100,11 +110,11 @@ export async function POST(request: Request) {
           driveWebViewLink = uploadResult.webViewLink;
         }
       } catch (driveErr) {
-        console.warn("Gagal upload via Google Drive API, menyimpan ke lokal storage:", driveErr);
+        console.warn("Gagal upload via Google Drive Dosen, menyimpan ke fallback lokal:", driveErr);
       }
     }
 
-    // Jika belum ada Drive API atau upload Drive gagal, simpan ke lokal storage
+    // Jika belum terhubung Google Drive atau gagal, simpan ke lokal storage
     if (!finalUrl) {
       ensureUploadsDir();
       const safeName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
@@ -113,13 +123,13 @@ export async function POST(request: Request) {
       finalUrl = `/api/files/${safeName}`;
     }
 
-    const db = readDatabase();
     const newFile: UploadedFile = {
       id: `file-${Date.now()}`,
-      studentId: user.id,
-      studentName: user.name,
-      nim: user.nim || "-",
-      academicYear: user.academicYear || "Belum Ditentukan",
+      studentId: student.id,
+      dosenId,
+      studentName: student.name,
+      nim: student.nim || "-",
+      academicYear: student.academicYear || "Belum Ditentukan",
       progressLogId,
       category,
       fileName: file.name,

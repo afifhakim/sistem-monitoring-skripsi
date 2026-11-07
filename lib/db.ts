@@ -7,17 +7,34 @@ export type StudentStatus = "PROPOSAL" | "PENELITIAN" | "SEMINAR_HASIL" | "SIDAN
 export type LogStatus = "MENUNGGU_REVIEW" | "DISETUJUI" | "PERLU_REVISI";
 export type FileCategory = "DOKUMEN_PDF" | "PRESENTASI" | "SIMULASI_RAW";
 
+export interface DosenDriveAuth {
+  connected: boolean;
+  googleEmail?: string;
+  accessToken?: string;
+  refreshToken?: string;
+  expiryDate?: number;
+  mainFolderId?: string;
+  mainFolderUrl?: string;
+  connectedAt?: string;
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
   passwordHash: string;
   role: Role;
+  nip?: string;
+  department?: string;
+  driveAuth?: DosenDriveAuth;
+  // Khusus Mahasiswa:
   nim?: string;
   academicYear?: string;
   thesisTitle?: string;
   topic?: string;
   status?: StudentStatus;
+  dosenId?: string;
+  dosenName?: string;
   driveFolderUrl?: string;
   createdAt: string;
 }
@@ -25,6 +42,7 @@ export interface User {
 export interface ProgressLog {
   id: string;
   studentId: string;
+  dosenId: string;
   studentName: string;
   nim: string;
   academicYear: string;
@@ -43,6 +61,7 @@ export interface ProgressLog {
 export interface UploadedFile {
   id: string;
   studentId: string;
+  dosenId: string;
   studentName: string;
   nim: string;
   academicYear: string;
@@ -59,17 +78,10 @@ export interface UploadedFile {
   uploadedAt: string;
 }
 
-export interface DosenSettings {
-  dosenId: string;
-  mainDriveFolderId?: string;
-  mainDriveFolderUrl?: string;
-}
-
 export interface DatabaseSchema {
   users: User[];
   progressLogs: ProgressLog[];
   files: UploadedFile[];
-  settings: DosenSettings;
 }
 
 const dataDir = path.join(process.cwd(), "data");
@@ -81,31 +93,57 @@ function ensureDirectoryExists(dir: string) {
   }
 }
 
-function getInitialData(): DatabaseSchema {
+export function getInitialData(): DatabaseSchema {
   const salt = bcrypt.genSaltSync(10);
-  const defaultPasswordDosen = bcrypt.hashSync("dosen123", salt);
-  const defaultPasswordMhs = bcrypt.hashSync("mhs123", salt);
+  const passwordAfif = bcrypt.hashSync("afif123", salt);
+  const passwordDemoDosen = bcrypt.hashSync("demo123", salt);
+  const passwordMhs = bcrypt.hashSync("mhs123", salt);
 
   const users: User[] = [
+    // 1. Akun Resmi Bersih Pak Afif Taufiiqul Hakim (Fresh - Belum ada isian mahasiswa)
     {
-      id: "usr-dosen-1",
+      id: "usr-afif-hakim",
       name: "Afif Taufiiqul Hakim",
       email: "afif@kampus.ac.id",
-      passwordHash: defaultPasswordDosen,
+      passwordHash: passwordAfif,
       role: "DOSEN",
+      department: "Teknik",
+      driveAuth: {
+        connected: false,
+        mainFolderUrl: "",
+      },
+      createdAt: new Date().toISOString(),
+    },
+
+    // 2. Akun Demo Dosen (Dilengkapi contoh data untuk referensi tampilan)
+    {
+      id: "usr-demo-dosen",
+      name: "Dr. Ir. Demo Pembimbing, M.T.",
+      email: "demo.dosen@kampus.ac.id",
+      passwordHash: passwordDemoDosen,
+      role: "DOSEN",
+      department: "Teknik Mesin",
+      driveAuth: {
+        connected: false,
+        mainFolderUrl: "https://drive.google.com/drive/folders/demo-drive-folder",
+      },
       createdAt: new Date("2023-01-01").toISOString(),
     },
+
+    // Mahasiswa Bimbingan Terhubung ke Akun Demo (Bisa dipelajari sebagai referensi)
     {
       id: "usr-mhs-1",
       name: "Budi Santoso",
       email: "budi@kampus.ac.id",
-      passwordHash: defaultPasswordMhs,
+      passwordHash: passwordMhs,
       role: "MAHASISWA",
       nim: "200401010",
       academicYear: "2023/2024",
       thesisTitle: "Analisis Dinamika Fluida Turbin Air Piko-Hidro Menggunakan Simulasi CFD",
       topic: "Konversi Energi & Simulasi Fluida",
       status: "LULUS",
+      dosenId: "usr-demo-dosen",
+      dosenName: "Dr. Ir. Demo Pembimbing, M.T.",
       driveFolderUrl: "https://drive.google.com/drive/folders/sample-budi-2023",
       createdAt: new Date("2023-09-01").toISOString(),
     },
@@ -113,13 +151,15 @@ function getInitialData(): DatabaseSchema {
       id: "usr-mhs-2",
       name: "Rina Wijaya",
       email: "rina@kampus.ac.id",
-      passwordHash: defaultPasswordMhs,
+      passwordHash: passwordMhs,
       role: "MAHASISWA",
       nim: "200401015",
       academicYear: "2023/2024",
       thesisTitle: "Optimasi Topologi Sayap Pesawat Tanpa Awak Berbasis Komposit Karbon",
       topic: "Material & Komputasi Struktur",
       status: "LULUS",
+      dosenId: "usr-demo-dosen",
+      dosenName: "Dr. Ir. Demo Pembimbing, M.T.",
       driveFolderUrl: "https://drive.google.com/drive/folders/sample-rina-2023",
       createdAt: new Date("2023-09-05").toISOString(),
     },
@@ -127,78 +167,41 @@ function getInitialData(): DatabaseSchema {
       id: "usr-mhs-3",
       name: "Fajar Pratama",
       email: "fajar@kampus.ac.id",
-      passwordHash: defaultPasswordMhs,
+      passwordHash: passwordMhs,
       role: "MAHASISWA",
       nim: "210401021",
       academicYear: "2024/2025",
       thesisTitle: "Simulasi Perpindahan Panas Sistem Pendingin Baterai Lithium-ion Kendaraan Listrik",
       topic: "Sistem Termal & Simulasi Numerik",
       status: "SEMINAR_HASIL",
+      dosenId: "usr-demo-dosen",
+      dosenName: "Dr. Ir. Demo Pembimbing, M.T.",
       driveFolderUrl: "https://drive.google.com/drive/folders/sample-fajar-2024",
       createdAt: new Date("2024-09-02").toISOString(),
     },
     {
       id: "usr-mhs-4",
-      name: "Siti Aisyah",
-      email: "siti@kampus.ac.id",
-      passwordHash: defaultPasswordMhs,
-      role: "MAHASISWA",
-      nim: "210401034",
-      academicYear: "2024/2025",
-      thesisTitle: "Perancangan Kontrol PID Adaptif pada Wahana Quadcopter Payload Khusus",
-      topic: "Kontrol Sistem Otomasi",
-      status: "PENELITIAN",
-      driveFolderUrl: "https://drive.google.com/drive/folders/sample-siti-2024",
-      createdAt: new Date("2024-09-10").toISOString(),
-    },
-    {
-      id: "usr-mhs-5",
       name: "Ahmad Fauzi",
       email: "mhs@kampus.ac.id",
-      passwordHash: defaultPasswordMhs,
+      passwordHash: passwordMhs,
       role: "MAHASISWA",
       nim: "220401005",
       academicYear: "2025/2026",
       thesisTitle: "Simulasi Elemen Hingga (FEM) Sambungan Las Tabung Bertekanan Tinggi",
       topic: "Mekanika Terapan & FEM",
       status: "PENELITIAN",
+      dosenId: "usr-demo-dosen",
+      dosenName: "Dr. Ir. Demo Pembimbing, M.T.",
       driveFolderUrl: "https://drive.google.com/drive/folders/sample-ahmad-2025",
       createdAt: new Date("2025-09-01").toISOString(),
-    },
-    {
-      id: "usr-mhs-6",
-      name: "Dewi Lestari",
-      email: "dewi@kampus.ac.id",
-      passwordHash: defaultPasswordMhs,
-      role: "MAHASISWA",
-      nim: "220401018",
-      academicYear: "2025/2026",
-      thesisTitle: "Model Prediksi Deformasi Termomekanik Menggunakan Python & TensorFlow",
-      topic: "Machine Learning & Komputasi Material",
-      status: "PROPOSAL",
-      driveFolderUrl: "https://drive.google.com/drive/folders/sample-dewi-2025",
-      createdAt: new Date("2025-09-15").toISOString(),
-    },
-    {
-      id: "usr-mhs-7",
-      name: "Kevin Pratama",
-      email: "kevin@kampus.ac.id",
-      passwordHash: defaultPasswordMhs,
-      role: "MAHASISWA",
-      nim: "230401009",
-      academicYear: "2026/2027",
-      thesisTitle: "Perancangan Geometri Turbin Angin Darrieus dengan Analisis Aerodinamika 3D",
-      topic: "Energi Baru Terbarukan",
-      status: "PROPOSAL",
-      driveFolderUrl: "https://drive.google.com/drive/folders/sample-kevin-2026",
-      createdAt: new Date("2026-09-01").toISOString(),
     },
   ];
 
   const progressLogs: ProgressLog[] = [
     {
       id: "log-1",
-      studentId: "usr-mhs-5",
+      studentId: "usr-mhs-4",
+      dosenId: "usr-demo-dosen",
       studentName: "Ahmad Fauzi",
       nim: "220401005",
       academicYear: "2025/2026",
@@ -215,7 +218,8 @@ function getInitialData(): DatabaseSchema {
     },
     {
       id: "log-2",
-      studentId: "usr-mhs-5",
+      studentId: "usr-mhs-4",
+      dosenId: "usr-demo-dosen",
       studentName: "Ahmad Fauzi",
       nim: "220401005",
       academicYear: "2025/2026",
@@ -228,27 +232,13 @@ function getInitialData(): DatabaseSchema {
       status: "MENUNGGU_REVIEW",
       createdAt: "2026-10-29T14:15:00Z",
     },
-    {
-      id: "log-3",
-      studentId: "usr-mhs-7",
-      studentName: "Kevin Pratama",
-      nim: "230401009",
-      academicYear: "2026/2027",
-      weekNumber: 2,
-      date: "2026-10-20",
-      title: "Studi Literatur Airfoil NACA 0018 & Rancangan Awal CAD",
-      summary: "Mengumpulkan 15 jurnal internasional terkait performa self-starting turbin Darrieus dan membuat sketsa 3D sudu di SolidWorks.",
-      blockers: "Belum menemukan data koefisien daya (Cp) pada Reynolds number rendah (Re < 100,000).",
-      nextPlan: "Menghitung distribusi gaya aerodinamika sudu dengan metode Double Multiple Streamtube (DMS).",
-      status: "MENUNGGU_REVIEW",
-      createdAt: "2026-10-20T09:00:00Z",
-    },
   ];
 
   const files: UploadedFile[] = [
     {
       id: "file-1",
-      studentId: "usr-mhs-5",
+      studentId: "usr-mhs-4",
+      dosenId: "usr-demo-dosen",
       studentName: "Ahmad Fauzi",
       nim: "220401005",
       academicYear: "2025/2026",
@@ -265,9 +255,11 @@ function getInitialData(): DatabaseSchema {
     },
     {
       id: "file-2",
-      studentId: "usr-mhs-5",
+      studentId: "usr-mhs-4",
+      dosenId: "usr-demo-dosen",
       studentName: "Ahmad Fauzi",
       nim: "220401005",
+      academicYear: "2025/2026",
       progressLogId: "log-2",
       category: "PRESENTASI",
       fileName: "Slide_Kemajuan_Penelitian_Simulasi_Las.pptx",
@@ -281,9 +273,11 @@ function getInitialData(): DatabaseSchema {
     },
     {
       id: "file-3",
-      studentId: "usr-mhs-5",
+      studentId: "usr-mhs-4",
+      dosenId: "usr-demo-dosen",
       studentName: "Ahmad Fauzi",
       nim: "220401005",
+      academicYear: "2025/2026",
       progressLogId: "log-2",
       category: "SIMULASI_RAW",
       fileName: "Raw_Simulation_ANSYS_APDL_Dataset.zip",
@@ -297,13 +291,7 @@ function getInitialData(): DatabaseSchema {
     },
   ];
 
-  const settings: DosenSettings = {
-    dosenId: "usr-dosen-1",
-    mainDriveFolderUrl: "https://drive.google.com/drive/folders/Skripsi-Bimbingan-Afif-Taufiiqul-Hakim",
-    mainDriveFolderId: "Skripsi-Bimbingan-Afif-Taufiiqul-Hakim",
-  };
-
-  return { users, progressLogs, files, settings };
+  return { users, progressLogs, files };
 }
 
 export function readDatabase(): DatabaseSchema {
