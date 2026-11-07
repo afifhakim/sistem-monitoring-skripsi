@@ -6,6 +6,22 @@ export type Role = "DOSEN" | "MAHASISWA";
 export type StudentStatus = "PROPOSAL" | "PENELITIAN" | "SEMINAR_HASIL" | "SIDANG" | "LULUS";
 export type LogStatus = "MENUNGGU_REVIEW" | "DISETUJUI" | "PERLU_REVISI";
 export type FileCategory = "DOKUMEN_PDF" | "PRESENTASI" | "SIMULASI_RAW";
+export type RevisionType = "PROPOSAL" | "SKRIPSI_AKHIR";
+
+export interface RevisionDeadline {
+  id: string;
+  studentId: string;
+  dosenId: string;
+  studentName: string;
+  nim: string;
+  academicYear: string;
+  type: RevisionType;
+  deadlineDate: string;  // ISO date string "YYYY-MM-DD"
+  notes?: string;
+  isCompleted: boolean;
+  completedAt?: string;
+  createdAt: string;
+}
 
 export interface DosenDriveAuth {
   connected: boolean;
@@ -82,6 +98,7 @@ export interface DatabaseSchema {
   users: User[];
   progressLogs: ProgressLog[];
   files: UploadedFile[];
+  revisionDeadlines: RevisionDeadline[];
 }
 
 const dataDir = path.join(process.cwd(), "data");
@@ -291,7 +308,7 @@ export function getInitialData(): DatabaseSchema {
     },
   ];
 
-  return { users, progressLogs, files };
+  return { users, progressLogs, files, revisionDeadlines: [] };
 }
 
 export function readDatabase(): DatabaseSchema {
@@ -304,7 +321,9 @@ export function readDatabase(): DatabaseSchema {
 
   try {
     const raw = fs.readFileSync(dbFilePath, "utf-8");
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (!parsed.revisionDeadlines) parsed.revisionDeadlines = [];
+    return parsed;
   } catch (err) {
     console.error("Error reading db.json, returning fresh state", err);
     return getInitialData();

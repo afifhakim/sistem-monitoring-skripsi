@@ -25,6 +25,9 @@ import {
   Check,
   ShieldCheck,
   Unlink,
+  Bell,
+  CalendarClock,
+  X,
 } from "lucide-react";
 
 interface Stats {
@@ -93,6 +96,22 @@ function DosenDashboardContent() {
   const [savingDriveUrl, setSavingDriveUrl] = useState(false);
   const [connectingDrive, setConnectingDrive] = useState(false);
 
+  // Notifikasi Deadline Revisi
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifCount, setNotifCount] = useState(0);
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
+
+  // Modal Deadline Revisi
+  const [showDeadlineModal, setShowDeadlineModal] = useState(false);
+  const [deadlineStudent, setDeadlineStudent] = useState<Student | null>(null);
+  const [deadlineForm, setDeadlineForm] = useState({
+    type: "PROPOSAL" as "PROPOSAL" | "SKRIPSI_AKHIR",
+    deadlineDate: "",
+    notes: "",
+  });
+  const [submittingDeadline, setSubmittingDeadline] = useState(false);
+  const [studentDeadlines, setStudentDeadlines] = useState<any[]>([]);
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -121,14 +140,31 @@ function DosenDashboardContent() {
     }
   };
 
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch("/api/notifications");
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data.notifications || []);
+        setNotifCount(data.count || 0);
+      }
+    } catch (err) {
+      console.error("Gagal memuat notifikasi:", err);
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    fetchNotifications();
+    const notifInterval = setInterval(fetchNotifications, 120000);
 
     if (searchParams.get("drive_success")) {
       setNotification("Akun Google Drive Anda berhasil dihubungkan!");
     } else if (searchParams.get("drive_error")) {
       setNotification(`Gagal menghubungkan Google Drive: ${searchParams.get("drive_error")}`);
     }
+
+    return () => clearInterval(notifInterval);
   }, [selectedYear, selectedStatus]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -249,6 +285,69 @@ function DosenDashboardContent() {
     }
   };
 
+  const handleOpenDeadlineModal = async (student: Student) => {
+    setDeadlineStudent(student);
+    setDeadlineForm({ type: "PROPOSAL", deadlineDate: "", notes: "" });
+    setShowDeadlineModal(true);
+    // Load existing deadlines for this student
+    try {
+      const res = await fetch(`/api/dosen/revision-deadline?studentId=${student.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setStudentDeadlines(data.deadlines || []);
+      }
+    } catch (err) {
+      setStudentDeadlines([]);
+    }
+  };
+
+  const handleSubmitDeadline = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!deadlineStudent) return;
+    setSubmittingDeadline(true);
+    try {
+      const res = await fetch("/api/dosen/revision-deadline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: deadlineStudent.id,
+          type: deadlineForm.type,
+          deadlineDate: deadlineForm.deadlineDate,
+          notes: deadlineForm.notes,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setStudentDeadlines((prev) => [data.deadline, ...prev]);
+        setDeadlineForm({ type: "PROPOSAL", deadlineDate: "", notes: "" });
+        fetchNotifications();
+        setNotification(`Deadline revisi untuk ${deadlineStudent.name} berhasil ditetapkan.`);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmittingDeadline(false);
+    }
+  };
+
+  const handleMarkDeadlineComplete = async (deadlineId: string) => {
+    try {
+      const res = await fetch("/api/dosen/revision-deadline", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deadlineId, isCompleted: true }),
+      });
+      if (res.ok) {
+        setStudentDeadlines((prev) =>
+          prev.map((d) => (d.id === deadlineId ? { ...d, isCompleted: true } : d))
+        );
+        fetchNotifications();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const copyRegisterLink = () => {
     if (typeof window !== "undefined") {
       navigator.clipboard.writeText(`${window.location.origin}/register`);
@@ -292,6 +391,20 @@ function DosenDashboardContent() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
+            {/* Tombol Notifikasi */}
+            <button
+              onClick={() => setShowNotifPanel(!showNotifPanel)}
+              className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 border border-slate-700 transition"
+              title="Notifikasi Deadline Revisi"
+            >
+              <Bell className="w-3.5 h-3.5" />
+              {notifCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {notifCount}
+                </span>
+              )}
+              <span className="hidden sm:inline">Notifikasi</span>
+            </button>
             <button
               onClick={() => setShowDriveModal(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 border border-slate-700 transition"
@@ -319,6 +432,53 @@ function DosenDashboardContent() {
           <button onClick={() => setNotification(null)} className="underline ml-2 opacity-80 hover:opacity-100">
             Tutup
           </button>
+        </div>
+      )}
+
+      {/* Notification Panel - Deadline Revisi */}
+      {showNotifPanel && (
+        <div className="fixed top-16 right-4 z-50 w-80 max-h-[70vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border border-slate-200 text-xs">
+          <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-900 rounded-t-2xl">
+            <div className="flex items-center gap-2 text-white">
+              <Bell className="w-4 h-4" />
+              <span className="font-bold">Notifikasi Deadline Revisi</span>
+              {notifCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-bold">
+                  {notifCount}
+                </span>
+              )}
+            </div>
+            <button onClick={() => setShowNotifPanel(false)} className="text-slate-400 hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {notifications.length === 0 ? (
+              <div className="p-6 text-center text-slate-400">
+                <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                <p>Tidak ada notifikasi deadline revisi.</p>
+              </div>
+            ) : (
+              notifications.map((notif) => (
+                <div
+                  key={notif.id}
+                  className={`p-3.5 ${
+                    notif.type === "OVERDUE"
+                      ? "bg-rose-50 border-l-4 border-rose-500"
+                      : notif.type === "APPROACHING"
+                      ? "bg-amber-50 border-l-4 border-amber-400"
+                      : "bg-white border-l-4 border-slate-200"
+                  }`}
+                >
+                  <p className="font-bold text-slate-800 mb-0.5">{notif.title}</p>
+                  <p className="text-slate-600 leading-relaxed">{notif.message}</p>
+                  <p className="text-[10px] text-slate-400 mt-1 font-mono">
+                    Deadline: {new Date(notif.deadlineDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
 
@@ -653,16 +813,26 @@ function DosenDashboardContent() {
                       </td>
 
                       <td className="py-3.5 px-4 text-right">
-                        <button
-                          onClick={() => {
-                            setSelectedStudent(student);
-                            setActiveTab("logs");
-                          }}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium text-xs transition"
-                        >
-                          Detail & Berkas
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleOpenDeadlineModal(student)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium text-xs transition"
+                            title="Tetapkan Deadline Revisi"
+                          >
+                            <CalendarClock className="w-3.5 h-3.5" />
+                            <span className="hidden lg:inline">Deadline</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedStudent(student);
+                              setActiveTab("logs");
+                            }}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium text-xs transition"
+                          >
+                            Detail & Berkas
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -985,6 +1155,131 @@ function DosenDashboardContent() {
         </div>
       )}
 
+      {/* Modal Deadline Revisi */}
+      {showDeadlineModal && deadlineStudent && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 text-xs max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <CalendarClock className="w-5 h-5 text-amber-500" />
+                  Deadline Revisi Skripsi
+                </h3>
+                <p className="text-slate-500 mt-0.5">
+                  {deadlineStudent.name} ({deadlineStudent.nim})
+                </p>
+              </div>
+              <button onClick={() => setShowDeadlineModal(false)} className="text-slate-400 hover:text-slate-700 p-1 rounded-lg">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Form Tambah Deadline */}
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 mb-4">
+              <h4 className="font-bold text-slate-800 mb-3">Tetapkan Deadline Baru</h4>
+              <form onSubmit={handleSubmitDeadline} className="space-y-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Jenis Revisi</label>
+                  <select
+                    value={deadlineForm.type}
+                    onChange={(e) => setDeadlineForm({ ...deadlineForm, type: e.target.value as "PROPOSAL" | "SKRIPSI_AKHIR" })}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800"
+                  >
+                    <option value="PROPOSAL">Revisi Sidang Proposal</option>
+                    <option value="SKRIPSI_AKHIR">Revisi Sidang Akhir (Skripsi)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Batas Waktu Revisi (Deadline)</label>
+                  <input
+                    type="date"
+                    required
+                    value={deadlineForm.deadlineDate}
+                    onChange={(e) => setDeadlineForm({ ...deadlineForm, deadlineDate: e.target.value })}
+                    min={new Date().toISOString().split("T")[0]}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Catatan Revisi (Opsional)</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Bagian yang harus direvisi, standar penilaian revisi, dsb..."
+                    value={deadlineForm.notes}
+                    onChange={(e) => setDeadlineForm({ ...deadlineForm, notes: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={submittingDeadline}
+                  className="w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-white font-semibold shadow transition disabled:opacity-50"
+                >
+                  {submittingDeadline ? "Menyimpan..." : "Tetapkan Deadline Revisi"}
+                </button>
+              </form>
+            </div>
+
+            {/* Daftar Deadline Aktif */}
+            {studentDeadlines.length > 0 && (
+              <div>
+                <h4 className="font-bold text-slate-800 mb-2">Riwayat Deadline Revisi</h4>
+                <div className="space-y-2">
+                  {studentDeadlines.map((d) => {
+                    const today = new Date(); today.setHours(0,0,0,0);
+                    const dl = new Date(d.deadlineDate); dl.setHours(0,0,0,0);
+                    const diffDays = Math.ceil((dl.getTime() - today.getTime()) / (1000*60*60*24));
+                    const isOverdue = !d.isCompleted && diffDays < 0;
+                    const isApproaching = !d.isCompleted && diffDays >= 0 && diffDays <= 3;
+
+                    return (
+                      <div
+                        key={d.id}
+                        className={`p-3 rounded-xl border ${
+                          d.isCompleted
+                            ? "bg-emerald-50 border-emerald-200"
+                            : isOverdue
+                            ? "bg-rose-50 border-rose-300"
+                            : isApproaching
+                            ? "bg-amber-50 border-amber-300"
+                            : "bg-white border-slate-200"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <span className="font-bold text-slate-800">
+                              {d.type === "PROPOSAL" ? "Revisi Sidang Proposal" : "Revisi Sidang Akhir"}
+                            </span>
+                            <div className="text-[11px] text-slate-500 mt-0.5">
+                              Deadline: {new Date(d.deadlineDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                              {isOverdue && <span className="ml-1 text-rose-600 font-bold">(Terlambat {Math.abs(diffDays)} hari!)</span>}
+                              {isApproaching && <span className="ml-1 text-amber-600 font-bold">(Sisa {diffDays} hari)</span>}
+                            </div>
+                            {d.notes && <p className="text-[11px] text-slate-500 italic mt-0.5">"{d.notes}"</p>}
+                          </div>
+                          {!d.isCompleted ? (
+                            <button
+                              onClick={() => handleMarkDeadlineComplete(d.id)}
+                              className="shrink-0 px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[10px] transition"
+                            >
+                              Tandai Selesai
+                            </button>
+                          ) : (
+                            <span className="shrink-0 px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">
+                              ✓ Selesai
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Modal Review Logbook */}
       {reviewingLog && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -1062,49 +1357,75 @@ function DosenDashboardContent() {
       {showDriveModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 text-xs max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center gap-2 mb-2 text-indigo-600">
-              <FolderOpen className="w-5 h-5 text-amber-500" />
-              <h3 className="text-base font-bold text-slate-900">Pengaturan Google Drive Dosen</h3>
+            <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2 text-indigo-600">
+                <FolderOpen className="w-5 h-5 text-amber-500" />
+                <h3 className="text-base font-bold text-slate-900">Integrasi Google Drive Pembimbing</h3>
+              </div>
+              <button
+                onClick={() => setShowDriveModal(false)}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <p className="text-slate-500 leading-relaxed mb-4">
-              Pilih metode integrasi Google Drive akun Anda. Dosen lain yang mendaftar juga dapat menghubungkan Google Drive akun mereka sendiri secara terpisah.
-            </p>
+
+            {/* Status Saat Ini */}
+            <div
+              className={`p-3.5 rounded-xl border mb-4 ${
+                stats?.driveAuth?.connected
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                  : "bg-slate-50 border-slate-200 text-slate-700"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`w-2.5 h-2.5 rounded-full ${
+                      stats?.driveAuth?.connected ? "bg-emerald-500 animate-pulse" : "bg-slate-400"
+                    }`}
+                  />
+                  <span className="font-bold">
+                    Status: {stats?.driveAuth?.connected ? "Terhubung ke Google Drive" : "Belum Terhubung"}
+                  </span>
+                </div>
+                {stats?.driveAuth?.connected && stats.driveAuth.mainFolderUrl && (
+                  <a
+                    href={stats.driveAuth.mainFolderUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-bold text-indigo-600 hover:underline flex items-center gap-1"
+                  >
+                    Buka Folder <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
+              {stats?.driveAuth?.connected && stats.driveAuth.mainFolderUrl && (
+                <p className="text-[11px] font-mono text-slate-500 mt-1 truncate">
+                  {stats.driveAuth.mainFolderUrl}
+                </p>
+              )}
+            </div>
 
             <div className="space-y-4">
-              {/* Opsi 1: Satu Klik OAuth Login */}
+              {/* Opsi 1: Input Tautan Folder Google Drive Langsung (Metode Langsung Aktif) */}
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                <h4 className="font-bold text-slate-900 mb-1 flex items-center gap-1.5 text-xs">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" /> Metode 1: Hubungkan Akun Google Langsung (OAuth)
+                <h4 className="font-bold text-slate-900 mb-1 flex items-center gap-1.5 text-xs text-indigo-700">
+                  <LinkIcon className="w-4 h-4 text-indigo-600" /> Metode 1: Hubungkan Tautan Folder Google Drive (Langsung Aktif)
                 </h4>
-                <p className="text-slate-500 text-[11px] mb-3">
-                  Setiap dosen cukup mengklik tombol di bawah untuk memberikan otorisasi akun Google Drive masing-masing.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleConnectGoogleDrive}
-                  disabled={connectingDrive}
-                  className="w-full py-2.5 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold flex items-center justify-center gap-2 transition shadow-sm"
-                >
-                  <FolderOpen className="w-4 h-4" />
-                  {connectingDrive ? "Menyiapkan Otorisasi..." : "Otorisasi Akun Google Drive Saya"}
-                </button>
-              </div>
-
-              {/* Opsi 2: Input Tautan Folder Manual */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                <h4 className="font-bold text-slate-900 mb-1 flex items-center gap-1.5 text-xs">
-                  <LinkIcon className="w-4 h-4 text-indigo-600" /> Metode 2: Tautan Folder Google Drive Manual
-                </h4>
-                <p className="text-slate-500 text-[11px] mb-3">
-                  Buat folder di Google Drive Anda (misal: <code>Skripsi_Afif_Taufiiqul_Hakim</code>), set izin berbagi (share link), dan tempel tautannya di bawah:
+                <p className="text-slate-500 text-[11px] mb-3 leading-relaxed">
+                  Cara paling praktis: Buka Google Drive Anda, buat folder (misal: <code>Skripsi_Bimbingan_Afif_Taufiiqul_Hakim</code>), set akses berbagi ke <em>Siapa saja yang memiliki link</em>, lalu tempel tautannya di bawah:
                 </p>
 
                 <form onSubmit={handleSaveDriveUrl} className="space-y-3">
                   <div>
+                    <label className="block font-semibold text-slate-700 mb-1 text-[11px]">
+                      Tautan Folder Google Drive Anda:
+                    </label>
                     <input
                       type="url"
                       required
-                      placeholder="https://drive.google.com/drive/folders/..."
+                      placeholder="https://drive.google.com/drive/folders/1ABC..."
                       value={driveUrlInput}
                       onChange={(e) => setDriveUrlInput(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 font-mono text-xs"
@@ -1112,23 +1433,71 @@ function DosenDashboardContent() {
                   </div>
 
                   <div className="flex justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowDriveModal(false)}
-                      className="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 font-semibold text-slate-700 transition"
-                    >
-                      Batal
-                    </button>
+                    {stats?.driveAuth?.connected && (
+                      <button
+                        type="button"
+                        onClick={handleDisconnectGoogleDrive}
+                        className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 font-medium transition"
+                      >
+                        Putus Hubungan
+                      </button>
+                    )}
                     <button
                       type="submit"
                       disabled={savingDriveUrl}
                       className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow transition disabled:opacity-50"
                     >
-                      {savingDriveUrl ? "Menyimpan..." : "Simpan Tautan Drive"}
+                      {savingDriveUrl ? "Menyimpan..." : "Hubungkan Google Drive Sekarang"}
                     </button>
                   </div>
                 </form>
               </div>
+
+              {/* Opsi 2: Satu Klik OAuth Login */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <h4 className="font-bold text-slate-900 mb-1 flex items-center gap-1.5 text-xs text-emerald-800">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" /> Metode 2: Otorisasi Google Cloud OAuth 2.0
+                </h4>
+                <p className="text-slate-500 text-[11px] mb-3 leading-relaxed">
+                  {stats?.isOAuthConfigured
+                    ? "Kredensial Google OAuth telah aktif. Klik tombol di bawah untuk login dan memberikan izin akses Google Drive secara otomatis:"
+                    : "Memerlukan konfigurasi GOOGLE_CLIENT_ID & GOOGLE_CLIENT_SECRET di environment Vercel atau .env.local jika ingin otorisasi otomatis 1-klik."}
+                </p>
+
+                {stats?.isOAuthConfigured ? (
+                  <button
+                    type="button"
+                    onClick={handleConnectGoogleDrive}
+                    disabled={connectingDrive}
+                    className="w-full py-2.5 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold flex items-center justify-center gap-2 transition shadow-sm"
+                  >
+                    <FolderOpen className="w-4 h-4" />
+                    {connectingDrive ? "Menyiapkan Otorisasi..." : "Login & Otorisasi Google Drive"}
+                  </button>
+                ) : (
+                  <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-amber-900 text-[11px] space-y-1.5">
+                    <p className="font-bold flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> Kredensial OAuth Belum Didaftarkan
+                    </p>
+                    <p className="text-slate-600">
+                      Gunakan <strong>Metode 1 di atas</strong> yang sudah langsung aktif tanpa perlu setup Google Cloud Console. Jika Anda ingin mengaktifkan OAuth otomatis, daftarkan Redirect URI berikut di Google Cloud Console:
+                    </p>
+                    <code className="block bg-white p-1.5 rounded border border-slate-200 text-slate-700 font-mono text-[10px] break-all">
+                      https://sistem-monitoring-skripsi.vercel.app/api/auth/google/callback
+                    </code>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowDriveModal(false)}
+                className="px-4 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 font-semibold text-slate-700 transition"
+              >
+                Tutup
+              </button>
             </div>
           </div>
         </div>

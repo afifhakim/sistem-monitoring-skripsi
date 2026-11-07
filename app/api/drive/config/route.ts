@@ -36,14 +36,21 @@ export async function POST(request: Request) {
     const dosen = db.users.find((u) => u.id === user.id && u.role === "DOSEN");
 
     if (dosen) {
-      if (!dosen.driveAuth) {
-        dosen.driveAuth = { connected: false };
-      }
-      dosen.driveAuth.mainFolderUrl = mainDriveFolderUrl;
+      const isConnecting = Boolean(mainDriveFolderUrl && mainDriveFolderUrl.trim().length > 0);
+      dosen.driveAuth = {
+        connected: isConnecting,
+        googleEmail: isConnecting ? (dosen.driveAuth?.googleEmail || dosen.email) : undefined,
+        mainFolderUrl: isConnecting ? mainDriveFolderUrl.trim() : "",
+        connectedAt: isConnecting ? new Date().toISOString() : undefined,
+      };
       writeDatabase(db);
     }
 
-    return NextResponse.json({ message: "Link folder Google Drive utama berhasil diperbarui." });
+    return NextResponse.json({
+      message: mainDriveFolderUrl?.trim()
+        ? "Google Drive berhasil dihubungkan!"
+        : "Konfigurasi Google Drive berhasil direset.",
+    });
   } catch (err: any) {
     return NextResponse.json({ error: "Gagal memperbarui konfigurasi." }, { status: 500 });
   }

@@ -11,6 +11,7 @@ import {
   FileSpreadsheet,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Clock,
   ExternalLink,
   FolderOpen,
@@ -18,6 +19,9 @@ import {
   LogOut,
   RefreshCw,
   Link as LinkIcon,
+  Bell,
+  CalendarClock,
+  X,
 } from "lucide-react";
 
 export default function MahasiswaDashboard() {
@@ -50,6 +54,27 @@ export default function MahasiswaDashboard() {
   const [submittingUpload, setSubmittingUpload] = useState(false);
   const [uploadMessage, setUploadMessage] = useState("");
 
+  // Notifikasi & Batas Waktu Revisi
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifCount, setNotifCount] = useState(0);
+  const [deadlines, setDeadlines] = useState<any[]>([]);
+  const [dosenName, setDosenName] = useState("Afif Taufiiqul Hakim");
+  const [dosenDriveFolderUrl, setDosenDriveFolderUrl] = useState("");
+  const [isDriveConnected, setIsDriveConnected] = useState(false);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch("/api/notifications");
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data.notifications || []);
+        setNotifCount(data.count || 0);
+      }
+    } catch (err) {
+      console.error("Gagal memuat notifikasi:", err);
+    }
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -62,6 +87,10 @@ export default function MahasiswaDashboard() {
       setUserData(data.user);
       setLogs(data.logs || []);
       setFiles(data.files || []);
+      if (data.dosenName) setDosenName(data.dosenName);
+      if (data.dosenDriveFolderUrl) setDosenDriveFolderUrl(data.dosenDriveFolderUrl);
+      if (typeof data.isDriveConnected === "boolean") setIsDriveConnected(data.isDriveConnected);
+      if (data.deadlines) setDeadlines(data.deadlines);
 
       // Auto set next week number
       if (data.logs && data.logs.length > 0) {
@@ -77,6 +106,9 @@ export default function MahasiswaDashboard() {
 
   useEffect(() => {
     fetchData();
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleLogout = async () => {
@@ -195,17 +227,101 @@ export default function MahasiswaDashboard() {
             </div>
           </div>
 
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-xs font-medium text-rose-300 border border-rose-800/50 transition"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Keluar</span>
-          </button>
+          <div className="flex items-center gap-3">
+            {notifCount > 0 && (
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-semibold animate-pulse">
+                <Bell className="w-3.5 h-3.5 text-rose-400" />
+                <span>{notifCount} Peringatan Revisi</span>
+              </div>
+            )}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-xs font-medium text-rose-300 border border-rose-800/50 transition"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Keluar</span>
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full space-y-6">
+        {/* Banner Peringatan Deadline Revisi Pasca Sidang */}
+        {notifications.length > 0 && (
+          <div className="space-y-3">
+            {notifications
+              .filter((n) => n.type === "OVERDUE" || n.type === "APPROACHING")
+              .map((notif) => (
+                <div
+                  key={notif.id}
+                  className={`p-4 rounded-2xl border shadow-sm flex items-start justify-between gap-4 ${
+                    notif.type === "OVERDUE"
+                      ? "bg-rose-50 border-rose-300 text-rose-900"
+                      : "bg-amber-50 border-amber-300 text-amber-900"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                        notif.type === "OVERDUE"
+                          ? "bg-rose-200 text-rose-800"
+                          : "bg-amber-200 text-amber-800"
+                      }`}
+                    >
+                      <AlertTriangle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-sm flex items-center gap-2">
+                        {notif.title}
+                        {notif.type === "OVERDUE" && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-600 text-white animate-pulse">
+                            MELEWATI BATAS WAKTU
+                          </span>
+                        )}
+                        {notif.type === "APPROACHING" && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white">
+                            MENDEKATI BATAS WAKTU
+                          </span>
+                        )}
+                      </h4>
+                      <p className="text-xs mt-1 leading-relaxed">{notif.message}</p>
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right font-mono text-[11px] opacity-75">
+                    {notif.deadlineDate}
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+
+        {/* Banner Google Drive Dosen */}
+        {dosenDriveFolderUrl && (
+          <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                <FolderOpen className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-slate-900">Google Drive Dosen Pembimbing Terhubung</h4>
+                <p className="text-slate-500 mt-0.5">
+                  Folder Google Drive Dosen ({dosenName}) tersedia. Berkas & simulasi Anda dapat diunggah atau dilihat langsung di folder Drive.
+                </p>
+              </div>
+            </div>
+            <a
+              href={dosenDriveFolderUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1.5 shrink-0 transition shadow-sm"
+            >
+              <FolderOpen className="w-3.5 h-3.5" />
+              Buka Folder Drive Dosen
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+        )}
+
         {/* Profile Card */}
         {userData && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
@@ -219,7 +335,7 @@ export default function MahasiswaDashboard() {
                   {getStatusBadge(userData.status)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
-                  Dosen Pembimbing: <strong className="text-indigo-700 font-bold">Afif Taufiiqul Hakim</strong> • Tahun Angkatan:{" "}
+                  Dosen Pembimbing: <strong className="text-indigo-700 font-bold">{dosenName || "Afif Taufiiqul Hakim"}</strong> • Tahun Angkatan:{" "}
                   <strong className="text-slate-800">{userData.academicYear}</strong> • Topik:{" "}
                   <strong className="text-slate-800">{userData.topic}</strong>
                 </p>
@@ -250,6 +366,96 @@ export default function MahasiswaDashboard() {
               <p className="text-sm font-semibold text-slate-800 mt-0.5 leading-relaxed">
                 {userData.thesisTitle}
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* Card Khusus: Batas Waktu Revisi Pasca-Sidang */}
+        {deadlines.length > 0 && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <CalendarClock className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-800 text-sm">
+                    Batas Waktu Revisi Pasca Sidang ({deadlines.length})
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Aturan penyelesaian revisi sesuai tenggat waktu yang ditetapkan dosen pembimbing
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-4">
+              {deadlines.map((d) => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const dl = new Date(d.deadlineDate);
+                dl.setHours(0, 0, 0, 0);
+                const diffDays = Math.ceil((dl.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                const isOverdue = !d.isCompleted && diffDays < 0;
+                const isApproaching = !d.isCompleted && diffDays >= 0 && diffDays <= 3;
+
+                return (
+                  <div
+                    key={d.id}
+                    className={`p-4 rounded-xl border text-xs ${
+                      d.isCompleted
+                        ? "bg-emerald-50/40 border-emerald-200"
+                        : isOverdue
+                        ? "bg-rose-50/60 border-rose-300"
+                        : isApproaching
+                        ? "bg-amber-50/60 border-amber-300"
+                        : "bg-slate-50 border-slate-200"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-bold text-slate-900 text-sm">
+                        {d.type === "PROPOSAL" ? "Revisi Sidang Proposal" : "Revisi Sidang Akhir Skripsi"}
+                      </span>
+                      {d.isCompleted ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" /> Revisi Selesai
+                        </span>
+                      ) : isOverdue ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 animate-pulse">
+                          Terlambat {Math.abs(diffDays)} Hari
+                        </span>
+                      ) : isApproaching ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                          Sisa {diffDays} Hari
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-700">
+                          Dalam Pengerjaan
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-2 text-slate-600">
+                      <strong>Batas Akhir (Deadline):</strong>{" "}
+                      <span className="font-mono text-slate-900 font-bold">
+                        {new Date(d.deadlineDate).toLocaleDateString("id-ID", {
+                          weekday: "long",
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </div>
+
+                    {d.notes && (
+                      <div className="mt-2 p-2.5 rounded-lg bg-white/80 border border-slate-200 text-slate-700">
+                        <strong className="text-slate-800 block text-[11px]">Arahan Revisi Pembimbing:</strong>
+                        <p className="mt-0.5 italic">{d.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

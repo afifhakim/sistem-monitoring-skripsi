@@ -69,8 +69,8 @@ export async function GET() {
     pendingReviews,
     fileStats,
     driveAuth: {
-      connected: Boolean(driveAuth.connected),
-      googleEmail: driveAuth.googleEmail || "",
+      connected: Boolean(driveAuth.connected || (driveAuth.mainFolderUrl && driveAuth.mainFolderUrl.trim().length > 0)),
+      googleEmail: driveAuth.googleEmail || (driveAuth.mainFolderUrl ? currentDosen.email : ""),
       mainFolderUrl: driveAuth.mainFolderUrl || "",
       connectedAt: driveAuth.connectedAt || "",
     },

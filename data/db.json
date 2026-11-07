@@ -182,5 +182,20 @@
       "notes": "File mentah simulasi: script .mac (APDL macro), database .dbd ANSYS, dan sheet perhitungan Excel validasi",
       "uploadedAt": "2026-10-29T14:28:00Z"
     }
+  ],
+  "revisionDeadlines": [
+    {
+      "id": "rev-demo-1",
+      "studentId": "usr-mhs-4",
+      "dosenId": "usr-demo-dosen",
+      "studentName": "Ahmad Fauzi",
+      "nim": "220401005",
+      "academicYear": "2025/2026",
+      "type": "PROPOSAL",
+      "deadlineDate": "2026-11-05",
+      "notes": "Revisi batasan masalah & penambahan tinjauan pustaka jurnal ASME 3 tahun terakhir.",
+      "isCompleted": false,
+      "createdAt": "2026-10-22T08:00:00Z"
+    }
   ]
 }

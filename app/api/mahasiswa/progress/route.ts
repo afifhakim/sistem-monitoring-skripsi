@@ -17,7 +17,21 @@ export async function GET() {
     .filter((f) => f.studentId === user.id)
     .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
 
-  return NextResponse.json({ logs, files, user });
+  const dosenId = user.dosenId || "usr-afif-hakim";
+  const dosen = db.users.find((u) => u.id === dosenId);
+  const deadlines = (db.revisionDeadlines || [])
+    .filter((d) => d.studentId === user.id)
+    .sort((a, b) => new Date(b.deadlineDate).getTime() - new Date(a.deadlineDate).getTime());
+
+  return NextResponse.json({
+    logs,
+    files,
+    user,
+    dosenName: dosen?.name || user.dosenName || "Afif Taufiiqul Hakim",
+    dosenDriveFolderUrl: dosen?.driveAuth?.mainFolderUrl || "",
+    isDriveConnected: Boolean(dosen?.driveAuth?.connected || dosen?.driveAuth?.mainFolderUrl),
+    deadlines,
+  });
 }
 
 export async function POST(request: Request) {
